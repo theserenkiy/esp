@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "sys.h": "c",
+        "esp_vfs_fat.h": "c",
+        "stddef.h": "c",
+        "sdspi_host.h": "c",
+        "dac_continuous.h": "c"
+    }
+}
