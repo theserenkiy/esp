@@ -46,10 +46,13 @@ static void on_wifi_disconnect(void *arg, esp_event_base_t event_base,
 esp_netif_t *wifi_init(char *ssid, char *passwd)
 {
 	esp_event_loop_create_default();
+	esp_netif_init();
+
 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+	cfg.nvs_enable = 0;
 	esp_wifi_init(&cfg);
 
-	esp_netif_init();
+	
 	esp_netif_config_t netif_config = ESP_NETIF_DEFAULT_WIFI_STA();
 	netif = esp_netif_new(&netif_config);
 
@@ -73,7 +76,6 @@ esp_netif_t *wifi_init(char *ssid, char *passwd)
 	esp_wifi_start();
 	
 	wifi_connect();
-
 	wait_for_ip();
 
 	return netif;

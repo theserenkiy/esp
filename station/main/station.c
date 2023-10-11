@@ -7,7 +7,7 @@
 //#include "esp_wifi.h"
 //#include "esp_event.h"
 //#include "esp_log.h"
-//#include "nvs_flash.h"
+#include "nvs_flash.h"
 
 //#include "lwip/err.h"
 //#include "lwip/sys.h"
@@ -25,7 +25,7 @@
 
 void app_main(void)
 {
-	// nvs_flash_init();
+	//nvs_flash_init();
 	
 	wifi_init(WIFI_SSID, WIFI_PASS);
 
