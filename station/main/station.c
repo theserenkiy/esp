@@ -16,7 +16,10 @@
 
 
 //#include "fat.c"
-#include "wifi.c"
+//#include "wifi.c"
+
+#include "stdin.c"
+
 
 #define WIFI_SSID      "ConnectToMeBaby"
 #define WIFI_PASS      "pankihoy"
@@ -27,7 +30,7 @@ void app_main(void)
 {
 	//nvs_flash_init();
 	
-	wifi_init(WIFI_SSID, WIFI_PASS);
+	//wifi_init(WIFI_SSID, WIFI_PASS);
 
 	//fat_test();
 

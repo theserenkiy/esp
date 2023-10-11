@@ -3,26 +3,44 @@
 #include "esp_event.h"
 
 volatile int has_ip = 0;
+volatile int wifi_trying_connect = 0;
 esp_netif_t *netif;
+
+int wait_for_ip(int ntry)
+{
+	for(int i = 0; i < ntry; i++)
+	{
+		if(has_ip)
+			break;
+		printf("Waiting for IP: %d of %d\n", i, ntry);
+		vTaskDelay(500 / portTICK_PERIOD_MS);
+	}
+	return has_ip;
+}
 
 int wifi_connect()
 {
-	esp_err_t err = esp_wifi_connect();
-	if (err == ESP_ERR_WIFI_NOT_STARTED) {
-		printf("Wi-Fi not started\n");
-		return 0;
+	if(wifi_trying_connect)
+	{
+		printf("Already trying to connect\n");
+		return -1;
 	}
-	return 1;
+	while(!has_ip)
+	{
+		printf("Connecting to wifi\n");
+		esp_err_t err = esp_wifi_connect();
+		if (err == ESP_ERR_WIFI_NOT_STARTED) {
+			printf("Wi-Fi not started\n");
+			return -1;
+		}
+		wifi_trying_connect = 1;
+		if(wait_for_ip(16))
+			break;
+	}
+	wifi_trying_connect = 0;
+	return has_ip ? 0 : -1;
 }
 
-void wait_for_ip()
-{
-	while (!has_ip)
-	{
-		printf("Waiting for IP\n");
-		vTaskDelay(500 / portTICK_PERIOD_MS);
-	}
-}
 
 static void on_got_ip(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -31,8 +49,6 @@ static void on_got_ip(void *arg, esp_event_base_t event_base, int32_t event_id, 
 	ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
 	int ip = event->ip_info.ip.addr;
 	printf("Your ip: %d.%d.%d.%d\n", (ip & 0xff), (ip & 0x0000ff00) >> 8, (ip & 0x00ff0000) >> 16, (ip & 0xff000000) >> 24);
-	//memcpy(&s_ip_addr, , sizeof(s_ip_addr));
-	//xEventGroupSetBits(s_connect_event_group, GOT_IPV4_BIT);
 }
 
 static void on_wifi_disconnect(void *arg, esp_event_base_t event_base,
@@ -40,7 +56,7 @@ static void on_wifi_disconnect(void *arg, esp_event_base_t event_base,
 {
 	has_ip = 0;
 	printf("Wi-Fi disconnected, trying to reconnect...\n");
-	wifi_connect();    
+	wifi_connect();
 }
 
 esp_netif_t *wifi_init(char *ssid, char *passwd)
@@ -76,7 +92,6 @@ esp_netif_t *wifi_init(char *ssid, char *passwd)
 	esp_wifi_start();
 	
 	wifi_connect();
-	wait_for_ip();
 
 	return netif;
 }
