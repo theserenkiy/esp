@@ -13,10 +13,12 @@
 //#include "lwip/sys.h"
 
 
-
-
 //#include "fat.c"
 //#include "wifi.c"
+
+
+#include "esp_netif_sntp.h"
+
 
 #include "stdin.c"
 
@@ -30,7 +32,19 @@ void app_main(void)
 {
 	//nvs_flash_init();
 	
-	//wifi_init(WIFI_SSID, WIFI_PASS);
+	wifi_init(WIFI_SSID, WIFI_PASS);
+
+	esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG_MULTIPLE(2,
+                               ESP_SNTP_SERVER_LIST("time.windows.com", "pool.ntp.org" ) );
+    esp_netif_sntp_init(&config);
+
+	for(int i = 0; i < 10; i++)
+	{
+		if(ERR_OK == esp_netif_sntp_sync_wait(pdMS_TO_TICKS(2000)))
+			break
+	}
+
+
 
 	//fat_test();
 
