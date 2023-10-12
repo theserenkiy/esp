@@ -4,6 +4,7 @@
         "esp_vfs_fat.h": "c",
         "stddef.h": "c",
         "sdspi_host.h": "c",
-        "dac_continuous.h": "c"
+        "dac_continuous.h": "c",
+        "queue": "c"
     }
 }

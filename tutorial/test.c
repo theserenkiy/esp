@@ -8,8 +8,10 @@ char *zerofill(int val, int len)
 {
 	int val_digits = val ? log10(val)+1 : 1;
 	int reslen = val_digits >= len ? val_digits : len;
+	if(reslen > 127)
+		return NULL;
 	
-	char *res = malloc(reslen+1);
+	char res[128];
 	int start = reslen-val_digits;
 	sprintf(res+start, "%d", val);
 	if(len > val_digits)

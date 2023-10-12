@@ -72,8 +72,6 @@ esp_netif_t *wifi_init(char *ssid, char *passwd)
 	esp_netif_config_t netif_config = ESP_NETIF_DEFAULT_WIFI_STA();
 	netif = esp_netif_new(&netif_config);
 
-	//assert(netif);
-
 	esp_netif_attach_wifi_station(netif);
 	esp_wifi_set_default_wifi_sta_handlers();
 
