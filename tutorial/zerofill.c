@@ -22,14 +22,11 @@ int main()
 	// time_t utime = time(NULL);
 	// struct tm *tm = gmtime(&utime);
 	// printf("Current time: %d:%d:%d\n",tm->tm_hour,tm->tm_min,tm->tm_sec);
-
 	//int i = 10;
-	
 
 	for(int i = 0; i < 110; i+=4)
 	{
 		printf("%d  %s\n", i, zerofill(i,3));	
 	}
 }
-
 

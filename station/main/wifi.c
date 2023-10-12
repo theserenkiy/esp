@@ -13,7 +13,7 @@ int wait_for_ip(int ntry)
 		if(has_ip)
 			break;
 		printf("Waiting for IP: %d of %d\n", i, ntry);
-		vTaskDelay(500 / portTICK_PERIOD_MS);
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
 	return has_ip;
 }
