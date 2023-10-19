@@ -18,19 +18,24 @@ int main()
     // fclose(fp);
 
     char filename[] = "myfile2.txt";
-    FILE *fp = fopen(filename, "r");
+
+    FILE *fp = fopen("myfile.txt", "r");
     if(!fp)
     {
-        printf("Файл %s не найден\n",filename);
+        printf("Файл не найден\n");
         return -1;
     }
-    char buffer[128];
+    
     fread(buffer,1,128,fp);
-    // while(!feof(fp))
-    // {
-    //     fgets(buffer,128,fp);
-    //     printf("Прочитана строка: %s\n",buffer);
-    // }
+    
+    //создаем массив, куда читать файл
+    char buffer[128];
+    //крутим цикл, пока в дескрипторе не появится флаг EOF - "конец файла"
+    while(!feof(fp))
+    {
+        fgets(buffer,128,fp);
+        printf("Прочитана строка: %s\n",buffer);
+    }
     
     printf("Прочитана строка: %s\n",buffer);
     fclose(fp);

@@ -7,7 +7,13 @@
 #define BUFSIZE 1024
 
 #define HOST_IP "127.0.0.1"
-#define HOST_PORT 5500
+#define HOST_PORT 5555
+
+typedef struct {
+	char name[32];
+	int age;
+}nigga_t;
+
 
 int main(int argc, char **argv) 
 {
@@ -15,8 +21,15 @@ int main(int argc, char **argv)
 	int sockfd;			
 
 	//сообщение которое отправим на сервер
-	char payload[] = "GET /iot?a=12&b=14 HTTP/1.1\r\nConnection: close\r\n\r\n";
-	
+	char header[1024];
+
+	nigga_t nigga = {
+		.name = "nigga",
+		.age = 22
+	};
+
+	sprintf(header, "POST /?id=123 HTTP/1.1\r\nContent-length: %d\r\nConnection: close\r\n\r\n", sizeof(nigga_t));
+
 	// буфер, куда будем читать
 	char buf[BUFSIZE];	
 	
@@ -39,9 +52,12 @@ int main(int argc, char **argv)
 
 	//Пишем в сокет (отправляем сообщение на сервер)
 	int nbytes;
-	nbytes = write(sockfd, payload, strlen(payload));
+	nbytes = write(sockfd, header, strlen(header));
 	if (nbytes < 0) 
-		printf("ERROR writing to socket\n");
+		printf("ERROR writing header to socket\n");
+	nbytes = write(sockfd, &nigga, sizeof(nigga_t));
+	if (nbytes < 0) 
+		printf("ERROR writing payload to socket\n");
 
 	//Читаем из сокета (принимаем сообщение с сервера)
 	nbytes = read(sockfd, buf, BUFSIZE);
