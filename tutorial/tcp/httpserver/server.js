@@ -1,6 +1,6 @@
 const port = 5555;
 
-process.title = "SERVER @ "+port;
+process.title = "HTTP SERVER @ "+port;
 
 const cl = console.log;
 
