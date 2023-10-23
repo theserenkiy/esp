@@ -5,8 +5,8 @@
 #include <arpa/inet.h>
 
 
-#define HOST_IP "127.0.0.1"
-#define HOST_PORT 1337
+#define HOST_IP "37.46.135.97"
+#define HOST_PORT 1338
 
 #define TOKEN "W48H4TKMBJPX6B5"
 
@@ -28,52 +28,48 @@ typedef struct {
 
 int connectToServer()
 {
-	// идентификатор сокета
-	int sockfd;			
-
 	// структура для хранения данных об адресе сервера
-	struct sockaddr_in serveraddr;	
-
-	//инициализация адреса сервера (куда подключаемся)
-	serveraddr.sin_family = AF_INET;
-	serveraddr.sin_addr.s_addr = inet_addr(HOST_IP);
-	serveraddr.sin_port = htons(HOST_PORT);
+	struct sockaddr_in serveraddr = {
+		.sin_family = AF_INET,
+		.sin_port = htons(HOST_PORT),
+		.sin_addr.s_addr = inet_addr(HOST_IP)
+	};	
 
 	//Создаём сокет
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sockfd < 0)
+	int sd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sd < 0)
 	{ 
 		printf("ERROR opening socket\n");
 		return -1;
 	}
 
 	//Подключаемся к серверу
-	if (connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
+	if (connect(sd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
 	{
 		printf("ERROR connecting\n");
 		return -1;
 	}
 	
-	return sockfd;
+	return sd;
 }
 
-int sendCommand(int sockfd, int cmd, void *payload, int payload_size)
+int sendCommand(int sd, int cmd, void *payload, int payload_size)
 {
-	request_header_t request_header; 
-	sprintf(request_header.token,"%s",TOKEN);
-	request_header.cmd = cmd;
-	request_header.datalen = payload_size;
-	write(sockfd, &request_header, sizeof(request_header_t));
+	request_header_t header; 
+	sprintf(header.token,"%s",TOKEN);
+	header.cmd = cmd;
+	header.datalen = payload_size;
+	write(sd, &header, sizeof(request_header_t));
 
 	if(payload)
-		write(sockfd, payload, payload_size);
+		write(sd, payload, payload_size);
 }
 
-int receiveResponse(int sockfd, void *pbuf)
+int receiveResponse(int sd, void *pbuf)
 {
 	response_header_t header;
 	//Читаем из сокета (принимаем сообщение с сервера)
-	int nbytes = read(sockfd, &header, sizeof(response_header_t));
+	int nbytes = read(sd, &header, sizeof(response_header_t));
 	if (nbytes < 0) 
 		printf("ERROR reading from socket\n");
 
@@ -81,7 +77,7 @@ int receiveResponse(int sockfd, void *pbuf)
 
 	if(header.length)
 	{
-		nbytes = read(sockfd, pbuf, header.length);
+		nbytes = read(sd, pbuf, header.length);
 		if (nbytes < 0) 
 			printf("ERROR reading from socket\n");
 	}

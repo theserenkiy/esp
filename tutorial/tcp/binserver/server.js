@@ -1,4 +1,4 @@
-const port = 1337;
+const port = 1338;
 process.title = "BINARY SERVER @ "+port;
 const cl = console.log;
 
@@ -6,7 +6,14 @@ const net = require('net');
 const fs = require('fs');
 
 const token_users = {
-	"W48H4TKMBJPX6B5": "Sergey"
+	"W48H4TKMBJPX6B5": "Sergey",
+	"X29RN28N8FGSCBA": "Temo4ka",
+	"597R3Q94V2T37FS": "Evgeniy",
+	"7EG45HARJAYBQTH": "Nill Kiggers",
+	"58B4SYCGSV5Q3YS": "Jilling Kews",
+	"5RGQ4K62APQEXQP": "Sasha",
+	"Q5N66F6GNKNH738": "Gleb",
+	"H44284GRBPTCE3N": "Vika"
 }
 
 const tokens = [
@@ -79,7 +86,7 @@ const server = net.createServer((socket) => {
 		socket.write(buf);
 		cl('Out: ',out)
 		if(out)
-			socket.write(out)d
+			socket.write(out);
 		socket.destroy();		
     });
 

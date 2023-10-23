@@ -11,10 +11,7 @@ int main()
 	int sockfd = connectToServer();
 	char buf[BUFSIZE];
 
-	printf("Enter message: \n");
-	fgets(buf, BUFSIZE, stdin);
-
-	sendCommand(sockfd,2,buf,strlen(buf));
+	sendCommand(sockfd,1,NULL,0);
 	
 	receiveResponse(sockfd,buf);
 
