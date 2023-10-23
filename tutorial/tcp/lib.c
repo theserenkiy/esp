@@ -4,12 +4,11 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#define BUFSIZE 1024
 
 #define HOST_IP "127.0.0.1"
 #define HOST_PORT 1337
 
-#define TOKEN ""
+#define TOKEN "W48H4TKMBJPX6B5"
 
 typedef struct {
 	char name[32];
@@ -17,11 +16,17 @@ typedef struct {
 }nigga_t;
 
 typedef struct {
+	char token[16];
+	int cmd;
+	int datalen;
+} request_header_t;
+
+typedef struct {
 	int status;
 	int length;
 } response_header_t;
 
-int main(int argc, char **argv) 
+int connectToServer()
 {
 	// идентификатор сокета
 	int sockfd;			
@@ -36,37 +41,48 @@ int main(int argc, char **argv)
 
 	//Создаём сокет
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sockfd < 0) 
+	if (sockfd < 0)
+	{ 
 		printf("ERROR opening socket\n");
+		return -1;
+	}
 
 	//Подключаемся к серверу
 	if (connect(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
+	{
 		printf("ERROR connecting\n");
-
-	//Пишем в сокет (отправляем сообщение на сервер)
-	int nbytes;
+		return -1;
+	}
 	
-	nbytes = write(sockfd, TOKEN, strlen(TOKEN));
-	if (nbytes < 0) 
-		printf("ERROR writing header to socket\n");
+	return sockfd;
+}
 
-	close(sockfd);
-	return 0;
+int sendCommand(int sockfd, int cmd, void *payload, int payload_size)
+{
+	request_header_t request_header; 
+	sprintf(request_header.token,"%s",TOKEN);
+	request_header.cmd = cmd;
+	request_header.datalen = payload_size;
+	write(sockfd, &request_header, sizeof(request_header_t));
 
-	char buf[BUFSIZE];
+	if(payload)
+		write(sockfd, payload, payload_size);
+}
+
+int receiveResponse(int sockfd, void *pbuf)
+{
 	response_header_t header;
 	//Читаем из сокета (принимаем сообщение с сервера)
-	nbytes = read(sockfd, &header, sizeof(response_header_t));
+	int nbytes = read(sockfd, &header, sizeof(response_header_t));
 	if (nbytes < 0) 
 		printf("ERROR reading from socket\n");
 
 	printf("Response header: status=%d, length=%d\n", header.status, header.length); 
 
-	//nigga = (nigga_t*)(buf + (nbytes-sizeof(nigga_t)));
-
-	//printf("Nigga name: %s, nigga age: %d\n", nigga->name, nigga->age);
-
-	//закрываем соединение
-	close(sockfd);
-	return 0;
+	if(header.length)
+	{
+		nbytes = read(sockfd, pbuf, header.length);
+		if (nbytes < 0) 
+			printf("ERROR reading from socket\n");
+	}
 }

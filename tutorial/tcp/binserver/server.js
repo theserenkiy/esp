@@ -2,47 +2,26 @@ const port = 1337;
 process.title = "BINARY SERVER @ "+port;
 const cl = console.log;
 
-var net = require('net');
+const net = require('net');
+const fs = require('fs');
+
+const token_users = {
+	"W48H4TKMBJPX6B5": "Sergey"
+}
 
 const tokens = [
-	"X29RN28N8FGSCBAD",
-	"597R3Q94V2T37FSN",
-	"7EG45HARJAYBQTHF",
-	"58B4SYCGSV5Q3YSZ",
-	"5RGQ4K62APQEXQPT",
-	"Q5N66F6GNKNH738G",
-	"H44284GRBPTCE3NB",
-	"75WS2VYD9FBB76ZD",
-	"N26UZ67SBE9J64WU",
-	"W48H4TKMBJPX6B5W"
+	"X29RN28N8FGSCBA",
+	"597R3Q94V2T37FS",
+	"7EG45HARJAYBQTH",
+	"58B4SYCGSV5Q3YS",
+	"5RGQ4K62APQEXQP",
+	"Q5N66F6GNKNH738",
+	"H44284GRBPTCE3N",
+	"75WS2VYD9FBB76Z",
+	"N26UZ67SBE9J64W",
+	"W48H4TKMBJPX6B5"
 ]
 
-const types = {
-	u32: ['readUInt32LE', 4],
-	s32: ['readInt32LE', 4],
-	u8: ['readUInt8LE', 1],
-	s8: ['readInt8LE', 1],
-}
-
-function parseStruct(buf,struct)
-{
-	let data = {}
-	let offset = 0;
-	for(let field in struct)
-	{
-		let type = struct[field]
-		if(types[type])
-		{
-			let [foo,len] = types[type][0];
-			data[field] = buf[foo](offset);
-			offset += len;
-		}
-		else
-		{
-
-		}
-	}
-}
 
 const server = net.createServer((socket) => {
     console.log("Client connected");
@@ -52,41 +31,63 @@ const server = net.createServer((socket) => {
 		let status = 0;
 		console.log(`Received data`, data);
 		try{
-			let token = data.toString('utf-8',0,16);
+			let token = data.toString('utf-8',0,15);
+			cl(token)
 
 			if(!tokens.includes(token))
 				throw "Invalid token";
 
-			let cmd = data.readUInt32BE(16);
-			console.log(`Received cmd: ${cmd}`);
+			let username = token_users[token] || 'Noname'
+
+			let cmd = data.readUInt32LE(16);
+			console.log(`Received cmd: ${cmd}, len: ${cmd.length}`);
 			
-			let out;
 			switch(cmd)
 			{
 				case 1:
-					out = "Privet, "+token;
+					out = "Privet, "+username+"!";
+					break;
+				
+				case 2:
+					let len = data.readUInt32LE(20);
+					fs.appendFileSync('chat.txt', JSON.stringify({
+							username,
+							msg: data.toString('utf-8',24,len+24)
+						})+'\n'
+					)
+					break;
+				
+				case 3:
+					let lines_count = data.readUInt32LE(24);
+					let lines = fs.readFileSync('chat.txt','utf-8').split('\n');
+					out = lines.slice(-lines_count).filter(v=>v.trim()).map(json => {
+						let v = JSON.parse(json);
+						return v.username+': '+v.msg
+					}).join('\n')
 					break;
 			}
 		}
 		catch(e)
 		{
 			cl(e)
-			status = 16;
+			status = 1;
 			out = (e+'').substring(0,16);
 		}
 		let buf = Buffer.alloc(8);
-		buf.writeUInt32LE(status);
-		buf.writeUInt32LE(out.length);
+		buf.writeInt32LE(status);
+		buf.writeUInt32LE(Buffer.byteLength(out),4);
 		socket.write(buf);
-		socket.write(out);
-		socket.close();
+		cl('Out: ',out)
+		if(out)
+			socket.write(out)d
+		socket.destroy();		
     });
 
     socket.on("end", () => {
         console.log("Client disconnected");
     });
 
-    socket.on("error", (error) => {
+    socket.on("error", (error) => { 
         console.log(`Socket Error: ${error.message}`);
     });
 });
