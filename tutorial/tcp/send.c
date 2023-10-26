@@ -5,17 +5,25 @@
 
 #define BUFSIZE 1024
 
+typedef struct {
+	char to[16];
+	char msg[1024];
+} sendmsg_t;
 
 int main() 
 {
 	int sockfd = connectToServer();
-	char buf[BUFSIZE];
+
+	sendmsg_t msg = {
+		.to = "all",
+	};
 
 	printf("Enter message: \n");
-	fgets(buf, BUFSIZE, stdin);
+	fgets(msg.msg, sizeof(msg.msg), stdin);
 
-	sendCommand(sockfd,2,buf,strlen(buf));
+	sendCommand(sockfd,2,&msg,sizeof(msg));
 	
+	char buf[BUFSIZE];
 	receiveResponse(sockfd,buf);
 
 	printf("%s\n",buf);

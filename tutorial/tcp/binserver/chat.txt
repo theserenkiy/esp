@@ -1,2 +1,9 @@
-{"username":"Sergey","msg":"Привет всем!\n"}
-{"username":"Sergey","msg":"Preved medved!\n"}
+{"from":"Sergey","to":"all","msg":"ййййй\n","time":1698327294071}
+{"from":"Sergey","to":"all","msg":"Привет всем!\n","time":1698327346078}
+{"from":"Sergey","to":"all","msg":"Ну чо, кто тут самый крутой?\n","time":1698328176199}
+{"from":"Sergey","to":"all","msg":"Ещё одно ту\u001bпое сообщение\n","time":1698329078247}
+{"from":"Sergey","to":"all","msg":"Проверка скролла\n","time":1698333203577}
+{"from":"Sergey","to":"all","msg":"О, прекрасно!!!\n","time":1698333218530}
+{"from":"Sergey","to":"","msg":"","time":1698334513541}
+{"from":"Sergey","to":"all","msg":"цувйцв\n","time":1698334720765}
+{"from":"Sergey","to":"all","msg":"цйцйцйцйцйц\n","time":1698334936662}

@@ -1,9 +1,9 @@
-const port = 1338;
+const port = 8124;
 process.title = "BINARY SERVER @ "+port;
 const cl = console.log;
 
-const net = require('net');
-const fs = require('fs');
+import net from 'net';
+import fs from 'fs';
 
 const token_users = {
 	"W48H4TKMBJPX6B5": "Sergey",
@@ -29,25 +29,53 @@ const tokens = [
 	"W48H4TKMBJPX6B5"
 ]
 
+function ntString(buf, start, end)
+{
+	let subbuf = buf.slice(start,end)
+	let nulpos = subbuf.indexOf(0)
+	return subbuf.slice(0,nulpos).toString('utf-8');
+}
+
 
 const server = net.createServer((socket) => {
     console.log("Client connected");
+
+	let payload_len = 0;
+	let totaldata = null;
+	let total_recved = 0;
+	let username = null;
+	let cmd = null;
 
     socket.on("data", (data) => {
 		let out = "";
 		let status = 0;
 		console.log(`Received data`, data);
+
 		try{
-			let token = data.toString('utf-8',0,15);
-			cl(token)
+			if(!payload_len)
+			{
+				let token = data.toString('utf-8',0,15);
+				cl(token)
 
-			if(!tokens.includes(token))
-				throw "Invalid token";
+				if(!tokens.includes(token))
+					throw "Invalid token";
 
-			let username = token_users[token] || 'Noname'
+				username = token_users[token] || 'Noname'
+				cmd = data.readUInt32LE(16);
+				payload_len = data.readUInt32LE(20);
+				totaldata = Buffer.alloc();
 
-			let cmd = data.readUInt32LE(16);
-			console.log(`Received cmd: ${cmd}, len: ${cmd.length}`);
+				console.log(`Received cmd: ${cmd}, payload len: ${payload_len}`);
+
+			}
+			else{
+				totaldata = tokens
+			}
+
+			if(totaldata.length < payload_len+24)
+				return;
+
+			let payload = data.slice(24, 24+payload_len);
 			
 			switch(cmd)
 			{
@@ -56,10 +84,13 @@ const server = net.createServer((socket) => {
 					break;
 				
 				case 2:
-					let len = data.readUInt32LE(20);
+					let to = ntString(payload,0,16);
+					
 					fs.appendFileSync('chat.txt', JSON.stringify({
-							username,
-							msg: data.toString('utf-8',24,len+24)
+							from: username,
+							to,
+							msg: ntString(payload,16,payload_len),
+							time: Date.now()
 						})+'\n'
 					)
 					break;

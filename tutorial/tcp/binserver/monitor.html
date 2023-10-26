@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Chat monitor</title>
+<style>
+body{
+	margin: 0;
+	background: #9b3 url(/pattern_black_opaque_16.png);
+	font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+	box-sizing: border-box;
+	padding: 20px 0;
+}
+.msg{
+	margin: 10px;
+	margin-bottom: 0;
+	font-size: 30px;
+	padding: 0.8em;
+	border: 1px solid #555;
+	border-radius: 15px;
+	box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
+	background-color: aliceblue;
+	transition: opacity 0.3;
+	opacity: 0;
+}
+.msg:first-child{
+	margin-top: 0;
+}
+
+</style>
+<script src="/jquery.js"></script>
+<script>
+const cl = console.log;
+async function ajax(cmd, data) {
+	let res = await fetch('/api/'+cmd,{
+		method:'POST',
+		headers: {'Content-Type': 'application/json'},
+		body: data ? JSON.stringify(data) : ''
+	})
+	let d = await res.json();
+	if(d.error)
+		alert('Error: '+d.error);
+	return d;
+}
+$(async ()=>{
+
+	lasttime = 0;
+
+	for(;;)
+	{
+		await new Promise(s=>setTimeout(s,300));
+
+		let params = {limit:100}
+		if(lasttime)
+		{
+			params.fromtime = lasttime;
+			params.limit = 0;
+		}
+		let msgs = await ajax('getmessages', params);
+		if(!msgs.length)
+			continue;
+		
+		lasttime = msgs[msgs.length-1].time;
+
+		let new_nodes = [];
+		for(let msg of msgs)
+		{
+			let node = $(`<div class="msg transparent"><strong>${msg.from}</strong>: ${msg.msg}</div>`);
+			$('#messages').append(node);
+			new_nodes.push(node);
+		}
+
+		let list_height = $('body').outerHeight();
+		let win_height = window.innerHeight;
+
+		cl(list_height,win_height)
+		if(list_height > win_height)
+			window.scrollTo({
+				top: list_height-win_height,
+				behavior: 'smooth'
+			})
+
+		new_nodes.forEach(n => n.animate({opacity:1},300));
+	}
+})
+</script>
+</head>
+<body>
+<div id="messages">
+
+</div>
+</body>
+</html>

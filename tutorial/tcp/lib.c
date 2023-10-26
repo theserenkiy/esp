@@ -5,8 +5,9 @@
 #include <arpa/inet.h>
 
 
-#define HOST_IP "37.46.135.97"
-#define HOST_PORT 1338
+//#define HOST_IP "37.46.135.97"
+#define HOST_IP "127.0.0.1"
+#define HOST_PORT 8124
 
 #define TOKEN "W48H4TKMBJPX6B5"
 
@@ -28,13 +29,6 @@ typedef struct {
 
 int connectToServer()
 {
-	// структура для хранения данных об адресе сервера
-	struct sockaddr_in serveraddr = {
-		.sin_family = AF_INET,
-		.sin_port = htons(HOST_PORT),
-		.sin_addr.s_addr = inet_addr(HOST_IP)
-	};	
-
 	//Создаём сокет
 	int sd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sd < 0)
@@ -43,8 +37,16 @@ int connectToServer()
 		return -1;
 	}
 
+	// структура для хранения данных об адресе сервера
+	struct sockaddr_in serveraddr = {
+		.sin_family = AF_INET,
+		.sin_addr.s_addr = inet_addr(HOST_IP),
+		.sin_port = htons(HOST_PORT)
+	};	
+
 	//Подключаемся к серверу
-	if (connect(sd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
+	//указатель на serveraddr приводим к типу "struct sockaddr *"
+	if(connect(sd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
 	{
 		printf("ERROR connecting\n");
 		return -1;
