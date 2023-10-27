@@ -31,9 +31,9 @@ const tokens = [
 
 function ntString(buf, start, end)
 {
-	let subbuf = buf.slice(start,end)
+	let subbuf = buf.subarray(start,end)
 	let nulpos = subbuf.indexOf(0)
-	return subbuf.slice(0,nulpos).toString('utf-8');
+	return subbuf.subarray(0,nulpos).toString('utf-8');
 }
 
 
@@ -63,19 +63,17 @@ const server = net.createServer((socket) => {
 				username = token_users[token] || 'Noname'
 				cmd = data.readUInt32LE(16);
 				payload_len = data.readUInt32LE(20);
-				totaldata = Buffer.alloc();
-
+				totaldata = Buffer.alloc(24+payload_len);
 				console.log(`Received cmd: ${cmd}, payload len: ${payload_len}`);
-
-			}
-			else{
-				totaldata = tokens
 			}
 
-			if(totaldata.length < payload_len+24)
+			data.copy(totaldata,total_recved);
+			total_recved += data.length;
+
+			if(total_recved < payload_len+24)
 				return;
 
-			let payload = data.slice(24, 24+payload_len);
+			let payload = totaldata.subarray(24, 24+payload_len);
 			
 			switch(cmd)
 			{
@@ -96,7 +94,7 @@ const server = net.createServer((socket) => {
 					break;
 				
 				case 3:
-					let lines_count = data.readUInt32LE(24);
+					let lines_count = payload.readUInt32LE(0);
 					let lines = fs.readFileSync('chat.txt','utf-8').split('\n');
 					out = lines.slice(-lines_count).filter(v=>v.trim()).map(json => {
 						let v = JSON.parse(json);
