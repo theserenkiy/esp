@@ -14,11 +14,11 @@ int main()
 {
 	int sockfd = connectToServer();
 
-	sendmsg_t msg = {
-		.to = "all",
-	};
+	sendmsg_t msg;
 
-	printf("Enter message: \n");
+	printf("To: \n");
+	fgets(msg.to, sizeof(msg.to), stdin);
+	printf("Message: \n");
 	fgets(msg.msg, sizeof(msg.msg), stdin);
 
 	sendCommand(sockfd,2,&msg,sizeof(msg));

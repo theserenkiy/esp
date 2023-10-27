@@ -9,6 +9,7 @@ import path from 'path';
 import fs from 'fs';
 import express from "express";
 import bodyParser from 'body-parser';
+import { getMessages } from './lib.js';
 
 const app = express();
 app.use(bodyParser.json())
@@ -25,14 +26,8 @@ app.post('/api/:cmd',(req, res) => {
     try{
         switch(req.params.cmd) {
             case 'getmessages':
-                let mm = fs.readFileSync(root+'/chat.txt', 'utf8')
-                    .trim().split('\n').map(s => JSON.parse(s)).filter(d => d.to=='all');
-
-                if(b.fromtime)
-                    mm = mm.filter(d => d.time > b.fromtime);
-                if(b.limit)
-                    mm = mm.slice(-b.limit);
-                out = mm;
+                
+                out = getMessages('all',b.fromtime,b.limit);
                 break;
         }
     }catch(e){

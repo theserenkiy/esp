@@ -4,38 +4,7 @@ const cl = console.log;
 
 import net from 'net';
 import fs from 'fs';
-
-const token_users = {
-	"W48H4TKMBJPX6B5": "Sergey",
-	"X29RN28N8FGSCBA": "Temo4ka",
-	"597R3Q94V2T37FS": "Evgeniy",
-	"7EG45HARJAYBQTH": "Nill Kiggers",
-	"58B4SYCGSV5Q3YS": "Jilling Kews",
-	"5RGQ4K62APQEXQP": "Sasha",
-	"Q5N66F6GNKNH738": "Gleb",
-	"H44284GRBPTCE3N": "Vika"
-}
-
-const tokens = [
-	"X29RN28N8FGSCBA",
-	"597R3Q94V2T37FS",
-	"7EG45HARJAYBQTH",
-	"58B4SYCGSV5Q3YS",
-	"5RGQ4K62APQEXQP",
-	"Q5N66F6GNKNH738",
-	"H44284GRBPTCE3N",
-	"75WS2VYD9FBB76Z",
-	"N26UZ67SBE9J64W",
-	"W48H4TKMBJPX6B5"
-]
-
-function ntString(buf, start, end)
-{
-	let subbuf = buf.subarray(start,end)
-	let nulpos = subbuf.indexOf(0)
-	return subbuf.subarray(0,nulpos).toString('utf-8');
-}
-
+import { getMessages, getUserLastReadTime, ntString, getUserToken, getTokenUsername, checkToken } from './lib.js';
 
 const server = net.createServer((socket) => {
     console.log("Client connected");
@@ -57,10 +26,10 @@ const server = net.createServer((socket) => {
 				let token = data.toString('utf-8',0,15);
 				cl(token)
 
-				if(!tokens.includes(token))
+				if(!checkToken(token))
 					throw "Invalid token";
 
-				username = token_users[token] || 'Noname'
+				username = getTokenUsername(token);
 				cmd = data.readUInt32LE(16);
 				payload_len = data.readUInt32LE(20);
 				totaldata = Buffer.alloc(24+payload_len);
@@ -83,6 +52,9 @@ const server = net.createServer((socket) => {
 				
 				case 2:
 					let to = ntString(payload,0,16);
+
+					if(!getUserToken(to))
+						throw "User not found";
 					
 					fs.appendFileSync('chat.txt', JSON.stringify({
 							from: username,
@@ -94,10 +66,11 @@ const server = net.createServer((socket) => {
 					break;
 				
 				case 3:
-					let lines_count = payload.readUInt32LE(0);
-					let lines = fs.readFileSync('chat.txt','utf-8').split('\n');
-					out = lines.slice(-lines_count).filter(v=>v.trim()).map(json => {
-						let v = JSON.parse(json);
+					let limit = payload.readUInt32LE(0);					
+					let lasttime = getUserLastReadTime(token);			
+					let msgs = getMessages(username, lasttime, limit);
+
+					out = msgs.map(v => {
 						return v.username+': '+v.msg
 					}).join('\n')
 					break;
