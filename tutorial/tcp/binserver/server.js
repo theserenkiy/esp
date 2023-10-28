@@ -51,7 +51,10 @@ const server = net.createServer((socket) => {
 					break;
 				
 				case 2:
-					let to = ntString(payload,0,16);
+					let to = ntString(payload,0,16)
+					cl('TO',to)
+					to = to.trim();
+					cl('TO trim',to);
 
 					if(!getUserToken(to))
 						throw "User not found";
@@ -66,12 +69,13 @@ const server = net.createServer((socket) => {
 					break;
 				
 				case 3:
-					let limit = payload.readUInt32LE(0);					
-					let lasttime = getUserLastReadTime(token);			
+					let limit = payload.readUInt32LE(0);
+					let all = payload.readUInt32LE(4);
+					let lasttime = all ? 0 : getUserLastReadTime(token);			
 					let msgs = getMessages(username, lasttime, limit);
 
 					out = msgs.map(v => {
-						return v.username+': '+v.msg
+						return v.from+': '+v.msg
 					}).join('\n')
 					break;
 			}
@@ -82,14 +86,23 @@ const server = net.createServer((socket) => {
 			status = 1;
 			out = (e+'').substring(0,16);
 		}
-		let buf = Buffer.alloc(8);
+		let buf = Buffer.alloc(8 + Buffer.byteLength(out));
 		buf.writeInt32LE(status);
 		buf.writeUInt32LE(Buffer.byteLength(out),4);
-		socket.write(buf);
+
+		cl('resp header', buf.subarray(0,8))
 		cl('Out: ',out)
-		if(out)
-			socket.write(out);
-		socket.destroy();		
+
+		if(out.length)
+		{
+			let respbuf = Buffer.from(out);
+			respbuf.copy(buf,8);
+		}
+		socket.write(buf);
+		
+		// if(out)
+		// 	socket.write(out);
+		// socket.destroy();		
     });
 
     socket.on("end", () => {

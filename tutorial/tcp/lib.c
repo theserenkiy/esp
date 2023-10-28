@@ -75,12 +75,14 @@ int receiveResponse(int sd, void *pbuf)
 	if (nbytes < 0) 
 		printf("ERROR reading from socket\n");
 
-	printf("Response header: status=%d, length=%d\n", header.status, header.length); 
+	//printf("Response header: status=%d, length=%d\n", header.status, header.length); 
 
 	if(header.length)
 	{
 		nbytes = read(sd, pbuf, header.length);
 		if (nbytes < 0) 
 			printf("ERROR reading from socket\n");
+		return nbytes;
 	}
+	return 0;
 }
