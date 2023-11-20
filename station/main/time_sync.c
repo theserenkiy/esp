@@ -16,6 +16,13 @@ int syncTime()
 	return -1;
 }
 
+void getCurTime(char *str)
+{
+	time_t utime = time(NULL);
+	struct tm *tm = gmtime(&utime);
+	sprintf(str,"%d:%d:%d", tm->tm_hour, tm->tm_min, tm->tm_sec);
+}
+
 void timeTest()
 {
     syncTime();

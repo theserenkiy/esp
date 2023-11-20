@@ -23,16 +23,15 @@ int is_wifi_ready(void)
 	return has_ip;
 }
 
-int wait_for_ip(int ntry)
+int wait_for_wifi()
 {
-	for(int i = 0; i < ntry; i++)
+	while(1)
 	{
-		if(has_ip)
-			break;
-		printf("Waiting for IP: %d of %d\n", i, ntry);
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		if(is_wifi_ready())
+			return 0;
+		printf("Waiting for wifi...\n");
+		vTaskDelay(1000/portTICK_PERIOD_MS);
 	}
-	return has_ip;
 }
 
 int wifi_connect()
@@ -121,6 +120,8 @@ esp_netif_t *wifi_init(char *ssid, char *passwd)
 	esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &on_got_ip, NULL);
 	esp_event_handler_register(IP_EVENT, IP_EVENT_STA_LOST_IP, &on_lost_ip, NULL);
 	esp_wifi_set_storage(WIFI_STORAGE_RAM);
+
+	esp_wifi_config_80211_tx_rate(WIFI_IF_STA, WIFI_PHY_RATE_1M_L);
 
 	wifi_connect();
 
