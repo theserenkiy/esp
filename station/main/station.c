@@ -15,7 +15,7 @@
 
 
 //#include "fat.c"
-//#include "wifi.c"
+#include "wifi.c"
 //#include "stdin.c"
 //#include "time_sync.c"
 
@@ -29,19 +29,22 @@
 
 
 
-
-
-
 void app_main(void)
 {
-	//nvs_flash_init();
+	nvs_flash_init();
 	
-	//wifi_init(WIFI_SSID, WIFI_PASS);
+	wifi_init(WIFI_SSID, WIFI_PASS);
 	//timeTest();
 	//fat_test();
 	//mount_partition("failo1","/storage");
 
-	timer_test();
+	//timer_test();
+
+	while(1)
+	{
+		printf("WiFi ready: %d\n",is_wifi_ready());
+		vTaskDelay(1000/portTICK_PERIOD_MS);
+	}
 	
 }
 
