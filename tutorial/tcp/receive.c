@@ -5,20 +5,34 @@
 
 #define BUFSIZE 1024
 
+typedef struct {
+	int limit;
+	int all;
+} read_header_t;
 
 int main() 
 {
-	int sockfd = connectToServer();
-	char buf[BUFSIZE];
+	while(1)
+	{
+		int sockfd = connectToServer();
+		char buf[BUFSIZE];
 
-	int nlines = 4;
-	sendCommand(sockfd,3,&nlines,4);
+		read_header_t header = {
+			.limit = 100,
+			.all = 1
+		};
 
-	receiveResponse(sockfd,buf);
+		int nlines = 4;
+		sendCommand(sockfd,3,&nlines,8);
 
-	printf("%s\n",buf);
+		int nbytes = receiveResponse(sockfd,buf);
 
-	//закрываем соединение
-	close(sockfd);
+		if(nbytes)
+			printf("%s\n",buf);
+
+		//закрываем соединение
+		close(sockfd);
+		sleep(1);
+	}
 	return 0;
 }
