@@ -1,6 +1,7 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
+#include <string.h>
 
 volatile int has_ip = 0;
 //volatile int wifi_ready = 0;
