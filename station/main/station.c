@@ -23,7 +23,9 @@
 //#include "driver/gptimer.h"
 //#include "timer.c"
 
-#include "keyboard_test.c"
+//#include "keyboard_test.c"
+
+#include "ledc.c"
 
 #define WIFI_SSID      "ConnectToMeBaby"
 #define WIFI_PASS      "pankihoy"
@@ -32,6 +34,7 @@
 void app_main(void)
 {
 	nvs_flash_init();
-	keyboardSummator();	
+	//keyboardSummator();	
+	ledc_test();
 }
 
