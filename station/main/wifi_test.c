@@ -28,7 +28,6 @@ void wifi_test()
 	{
 		state = is_wifi_ready();
 		gpio_set_level(12,state);
-		//printf("WiFi ready: %d\n",is_wifi_ready());
 
 		if(state != laststate)
 		{
