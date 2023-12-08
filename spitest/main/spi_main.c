@@ -16,10 +16,10 @@
 #include "driver/spi_master.h"
 #include "driver/gpio.h"
 
-#define PIN_MISO 25
-#define PIN_MOSI 23
-#define PIN_CLK  19
-#define PIN_CS   22
+#define PIN_MISO 26
+#define PIN_MOSI 12
+#define PIN_CLK  27
+#define PIN_CS   14
 
 #define PIN_DC   21
 #define PIN_RST  18
@@ -105,18 +105,19 @@ void app_main(void)
 	printf("ret=%d\n", ret);
 	ESP_ERROR_CHECK(ret);
 
-	int freq = spi->real_clk_freq_hz;
+	//int freq = spi->real_clk_freq_hz;
 	//printf("SPI clk= %d\n", freq);
 
 	//uint8_t digits[][] = {{}}
 
 
 	uint8_t data[][2] = {
-		{0x0C,0x01},
-		{0x0A,0x01},
-		{0x0B,0x07},
-		//{0x0F,0x01},
-		{0x01,0x08},
+		{0x0C,0x01},	//Shutdown: off
+		{0x0A,0x01},	//Intensity: 3/32
+		{0x0B,0x07},	//Scan limit: all
+		//{0x0F,0x01},	//Display test: on
+						//Data: ...
+		{0x01,0x08},	
 		{0x02,0x07},
 		{0x03,0x06},
 		{0x04,0x05},
@@ -124,6 +125,7 @@ void app_main(void)
 		{0x06,0x03},
 		{0x07,0x02},
 		{0x08,0x01},
+						//End data
 		{0xff,0x00}
 	};
 
@@ -140,16 +142,17 @@ void app_main(void)
 			packet[j][0] = data[i][0];
 			packet[j][1] = data[i][1];
 		}
-		tx(spi,(uint8_t *)packet,NDISP*2*8);
+		//tx(spi,(uint8_t *)packet,NDISP*2*8);
+		bitbang_tx((uint8_t *)packet,NDISP*2*8);
 	}
 	
-	for(int i=0;i < 8; i++)
-	{
-		for(int j=0; j < NDISP; j++)
-		{
-			packet[j][0] = i+1;
-			packet[j][1] = 1 << j | 1 << (j+1);
-		}
-		tx(spi,(uint8_t *)packet,NDISP*2*8);
-	}
+	// for(int i=0;i < 8; i++)
+	// {
+	// 	for(int j=0; j < NDISP; j++)
+	// 	{
+	// 		packet[j][0] = i+1;
+	// 		packet[j][1] = 1 << j | 1 << (j+1);
+	// 	}
+	// 	tx(spi,(uint8_t *)packet,NDISP*2*8);
+	// }
 }

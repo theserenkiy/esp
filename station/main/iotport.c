@@ -28,8 +28,8 @@ typedef struct {
 
 int connectToServer()
 {
-	// структура для хранения данных об адресе сервера
-	struct sockaddr_in serveraddr;	
+	//структура для хранения данных об адресе сервера
+	struct sockaddr_in serveraddr;
 
 	//инициализация адреса сервера (куда подключаемся)
 	serveraddr.sin_family = AF_INET;
@@ -56,80 +56,79 @@ int connectToServer()
 
 int serverTransaction()
 {
-    int sd;
+	int sd;
 	int var_id = 1;
-    sd = connectToServer();
-    if(sd < 0)
-    {
-        return -1;
-    }
-    
-    req_header_t req_header;
+	sd = connectToServer();
+	if(sd < 0)
+	{
+		return -1;
+	}
+	
+	req_header_t req_header;
 
-    memcpy(req_header.token, TOKEN, 32);
-    req_header.cmd = 2;
-    req_header.len = 4;
-    
-    //int value = 1;
+	memcpy(req_header.token, TOKEN, 32);
+	req_header.cmd = 2;
+	req_header.len = 4;
+	
+	//int value = 1;
 
-    int* buf = (int *)req_header.payload;
-    buf[0] = var_id;
+	int* buf = (int *)req_header.payload;
+	buf[0] = var_id;
 
-    write(sd, &req_header, 32+4+4+4);
+	write(sd, &req_header, 32+4+4+4);
 
-    res_header_t res_header;
-    read(sd, &res_header, sizeof(res_header));
+	res_header_t res_header;
+	read(sd, &res_header, sizeof(res_header));
 
-    int led_state = (unsigned int)*res_header.payload;
+	int led_state = (unsigned int)*res_header.payload;
 
-    printf("Error: %d, len: %d, payload: %d\n", res_header.error, res_header.len, led_state);
+	printf("Error: %d, len: %d, payload: %d\n", res_header.error, res_header.len, led_state);
 
-    if(!res_header.error)
-    {
-        gpio_set_level(12,!!led_state);
-    }
+	if(!res_header.error)
+	{
+		gpio_set_level(12,!!led_state);
+	}
 
-    close(sd);
-    return 0;
+	close(sd);
+	return 0;
 }
 
 int iotport_getVar(int id, void *data)
 {
-    int sd;
+	int sd;
 	int var_id = 1;
-    wait_for_wifi();
-    sd = connectToServer();
-    if(sd < 0)
-    {
-        return -1;
-    }
-    
-    req_header_t req_header;
+	wait_for_wifi();
+	sd = connectToServer();
+	if(sd < 0)
+	{
+		return -1;
+	}
+	
+	req_header_t req_header;
 
-    memcpy(req_header.token, TOKEN, 32);
-    req_header.cmd = 2;
-    req_header.len = 4;
-    
-    int* buf = (int *)req_header.payload;
-    buf[0] = var_id;
+	memcpy(req_header.token, TOKEN, 32);
+	req_header.cmd = 2;
+	req_header.len = 4;
+	
+	int* buf = (int *) req_header.payload;
+	buf[0] = var_id;
 
-    write(sd, &req_header, 32+4+4+4);
+	write(sd, &req_header, 32+4+4+4);
 
-    res_header_t res_header;
-    read(sd, &res_header, sizeof(res_header));
+	res_header_t res_header;
+	read(sd, &res_header, sizeof(res_header));
 
-    if(res_header.error)
-    {
-        printf("Error: payload: %s\n", res_header.payload);
-        close(sd);
-        return -1;
-    }
-    else
-    {
-        printf("Var %d received\n",id);
-        memcpy(data,res_header.payload,res_header.len);
-        close(sd);
-        return res_header.len;
-    }
-
+	if(res_header.error)
+	{
+		printf("Error: payload: %s\n", res_header.payload);
+		close(sd);
+		return -1;
+	}
+	else
+	{
+		printf("Var %d received\n",id);
+		memcpy(data,res_header.payload,res_header.len);
+		close(sd);
+		return res_header.len;
+	}
 }
