@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
+#include "nvs_flash.h"
 
 //флажок о том, что получен IP
 volatile int has_ip = 0;
@@ -133,6 +134,9 @@ static void on_lost_ip(void *arg, esp_event_base_t event_base, int32_t event_id,
 //инициализация вайфая
 esp_netif_t *wifi_init(char *ssid, char *passwd)
 {
+	//инициализация хранилища во флеш-памяти (нужно для кэширования параметров WiFi)
+	nvs_flash_init();
+
 	//инициализируем цикл обработчика событий
 	esp_event_loop_create_default();
 
