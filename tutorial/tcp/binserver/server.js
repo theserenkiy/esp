@@ -47,7 +47,7 @@ const server = net.createServer((socket) => {
 			switch(cmd)
 			{
 				case 1:
-					out = "Privet, "+username+"!";
+					out = "Privet,  "+username+"!";
 					break;
 				
 				case 2:
