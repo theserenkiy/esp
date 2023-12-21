@@ -1,0 +1,4 @@
+ffmpeg -i "01.ogg" -acodec pcm_u8 -ac 1 -ar 8000 "01_8k.wav"
+ffmpeg -i "01.ogg" -f u8 -acodec pcm_u8 -ac 1 -ar 8000 "01_8k.raw"
+ffmpeg -i "01.ogg" -acodec pcm_u8 -ac 1 -ar 10000 -filter:a "atempo=1.3" "01_8k_speedup.wav"
+
