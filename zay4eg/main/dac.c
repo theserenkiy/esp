@@ -4,6 +4,8 @@
 #include "esp_system.h"
 #include <string.h>
 
+static uint8_t buf[2048];
+
 // не используем выравнивание износа
 static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
 
@@ -38,15 +40,7 @@ dac_continuous_handle_t dac_continious_init(int freq)
         .buf_size = 2048,
         .freq_hz = freq,
         .offset = 0,
-        .clk_src = DAC_DIGI_CLK_SRC_APLL,   // Using APLL as clock source to get a wider frequency range
-        /* Assume the data in buffer is 'A B C D E F'
-         * DAC_CHANNEL_MODE_SIMUL:
-         *      - channel 0: A B C D E F
-         *      - channel 1: A B C D E F
-         * DAC_CHANNEL_MODE_ALTER:
-         *      - channel 0: A C E
-         *      - channel 1: B D F
-         */
+        .clk_src = DAC_DIGI_CLK_SRC_APLL,   
         .chan_mode = DAC_CHANNEL_MODE_SIMUL,
     };
     /* Allocate continuous channels */
@@ -57,53 +51,3 @@ dac_continuous_handle_t dac_continious_init(int freq)
 }
 
 
-int dac_test()
-{
-	if(mount_partition("files","/files") < 0)
-	{
-		printf("Failed to mount partition\n");
-		return -1;
-	}
-
-	dac_continuous_handle_t dac = dac_continious_init(10000);
-	FILE *fp;
-	char fname[32];
-	uint8_t buf[2048];
-	int bytes;
-	int first_read = 0;
-	float step;
-	for(int i=1; i <= 33; i++)
-	{
-		sprintf(fname,"/files/%02d.wav",i);
-		printf("Filename %s\n",fname);
-		fp = fopen(fname,"r");
-		if(!fp)
-		{
-			printf("Cannot open audio file :(\n");
-			return -1;
-		}
-		first_read = 1;
-
-		while(!feof(fp))
-		{
-			bytes = fread(&buf, 1, 2048, fp);
-			//ramping begin of the file
-			if(first_read)
-			{
-				step = ((float)buf[256])/256;
-				for(int j=0;j < 256;j++)
-					buf[j] = (int)(j*step);
-			}
-			first_read=0;
-			printf("Bytes read: %d\n",bytes);
-			if(bytes < 2048)
-			{
-				memset(buf+bytes,0,2048-bytes);
-			}
-			dac_continuous_write(dac, buf, 2048, NULL, -1);
-		}
-		fclose(fp);
-	}
-	
-	return 0;
-}

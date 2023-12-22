@@ -7,9 +7,16 @@
 #include "freertos/queue.h"
 #include "driver/gpio.h"
 
+
+static QueueHandle_t gpio_evt_queue = NULL;
+static QueueHandle_t dac_queue = NULL;
+volatile int dac_active = 0;
+
 #include "dac.c"
 
 #define DEVICE_TEST
+
+
 #include "distance_reaction.c"
 
 #define TX_PIN 26
@@ -18,11 +25,9 @@
 #define DIST_FILTER_SIZE 8
 
 
-
-
-static QueueHandle_t gpio_evt_queue = NULL;
 volatile uint64_t sonar_tx_time;
 volatile float distance;
+static int filenum = 1;
 
 uint64_t time_us()
 {
@@ -82,13 +87,73 @@ void measurement_task(void *arg)
 	}
 }
 
+int dac_task(void *arg)
+{
+	dac_queue = xQueueCreate(10, sizeof(uint32_t));
+
+	if(mount_partition("files","/files") < 0)
+	{
+		printf("Failed to mount partition\n");
+		return -1;
+	}
+
+	dac_continuous_handle_t dac = dac_continious_init(10000);
+	FILE *fp;
+	char fname[32];
+	int bytes;
+	int first_read = 0;
+	float step;
+	int filenum;
+	for(;;)
+	{
+		if(xQueueReceive(dac_queue, &filenum, portMAX_DELAY))
+		{
+			dac_active = 1;
+			sprintf(fname,"/files/%02d.wav",filenum);
+			printf("Filename %s\n",fname);
+			fp = fopen(fname,"r");
+			if(!fp)
+			{
+				printf("Cannot open audio file :(\n");
+				return -1;
+			}
+			first_read = 1;
+
+			while(!feof(fp))
+			{
+				bytes = fread(&buf, 1, 2048, fp);
+				//ramping begin of the file
+				if(first_read)
+				{
+					// step = ((float)buf[256])/256;
+					// for(int j=0;j < 256;j++)
+					// 	buf[j] = (int)(j*step);
+					memset(buf, 128, 256);
+				}
+				first_read=0;
+				//printf("Bytes read: %d\n",bytes);
+
+				//filling the rest of buffer with zeros if necessary
+				if(bytes < 2048)
+				{
+					memset(buf+bytes,128,2048-bytes);
+				}
+
+				// DAC write
+				dac_continuous_write(dac, buf, 2048, NULL, -1);
+			}
+			fclose(fp);
+			dac_active = 0;
+		}
+	}
+	
+	return 0;
+}
 
 
 void app_main(void)
 {
 	printf("Hello world!\n");
-	dac_test();
-	return;
 
 	gpio_install_isr_service(0);
 
@@ -102,14 +167,19 @@ void app_main(void)
 	gpio_isr_handler_add(RX_PIN, sonar_on_rx, NULL);
 
 	xTaskCreate(measurement_task,"measurement_task",2048,NULL,10,NULL);
-	
+	xTaskCreate(dac_task,"dac_task",2048,NULL,10,NULL);
 	
 	while(1)
 	{
+		if(!dac_active)
+		{
+			xQueueSend(dac_queue, &filenum, NULL);
+			filenum = filenum==33 ? 1 : filenum+1;
+		}
+
 		printf("%.2f\n",distance);
 
 		upd_distance(distance);
-
 		fflush(stdout);	
 		
 		vTaskDelay(500/portTICK_PERIOD_MS);

@@ -27,6 +27,7 @@ float approach_steps[] = {3, 2, 1, 0.5};
 
 typedef struct {
 	int started;
+	int messages;
 	int introduced;
 	int approached;
 	int departured;
@@ -39,8 +40,16 @@ static int cur_step = -1, last_step = -1;
 static int idle_counter = 0;
 static int last_said = 0;
 
+static int lvl0_msgs = {1,  3,           15, 19, 23, 24, 25,   29};
+static int lvl1_msgs = {  2,   4, 8, 17,             26, 27,  30, 32, 33};
+static int lvl2_msgs = {         5, 9, 10, 13, 14, 16, 28, 29, 31, 33};
+static int lvl3_msgs = {		 5, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 28, 29, 31, 32, 33};
+
+static int *lvlmsgs[] = {lvl0_msgs, lvl1_msgs, lvl2_msgs, lvl3_msgs};
+
 int canSay()
 {
+	session_messages++;
 	return !last_said || (nupdates-last_said > CANSAY_DELAY && rand()%CANSAY_RAND == 0);
 }
 
@@ -113,6 +122,9 @@ void upd_distance(float dist)
 	printf("Cur step: %d\n", cur_step);
 	
 	//if idle
+
+	if(cur_step >= 0)
+		session.destroy_countdown = 10;
 	if(last_step == cur_step)
 	{
 		idle_counter++;
@@ -133,19 +145,24 @@ void upd_distance(float dist)
 	{
 		session = (session_t) {
 			.started = nupdates,
+			.messages = 0,
 			.introduced = 0,
 			.approached = 0,
-			.departured = 0
+			.departured = 0,
+			.destroy_countdown = 10 //5 sec
 		};
 		new_session();
 	}
 	else if(session.started && cur_step < 0)
 	{
-		session.started = 0;
-		if(last_step > 0)
-			depart(0);
-		else if(session.introduced)
-			close_session();
+		if(destroy_countdown-- <= 0)
+		{
+			session.started = 0;
+			// if(last_step > 0)
+			// 	depart(0);
+			// else if(session.introduced)
+			// 	close_session();
+		}
 	}
 	else if(cur_step > last_step)
 	{
