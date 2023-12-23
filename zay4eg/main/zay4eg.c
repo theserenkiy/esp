@@ -87,22 +87,19 @@ void measurement_task(void *arg)
 	}
 }
 
+
+
 int dac_task(void *arg)
 {
 	dac_queue = xQueueCreate(10, sizeof(uint32_t));
 
-	if(mount_partition("files","/files") < 0)
-	{
-		printf("Failed to mount partition\n");
-		return -1;
-	}
-
-	dac_continuous_handle_t dac = dac_continious_init(10000);
+	dac_continuous_handle_t dac = dac_continious_init(16000);
 	FILE *fp;
 	char fname[32];
 	int bytes;
 	int first_read = 0;
 	float step;
+	int ramp_startpos;
 	int filenum;
 	for(;;)
 	{
@@ -125,9 +122,9 @@ int dac_task(void *arg)
 				//ramping begin of the file
 				if(first_read)
 				{
-					// step = ((float)buf[256])/256;
-					// for(int j=0;j < 256;j++)
-					// 	buf[j] = (int)(j*step);
+					step = ((float)buf[256]-128)/256;
+					for(int j=0;j < 256;j++)
+					buf[j] = 128+(int)(j*step);
 					memset(buf, 128, 256);
 				}
 				first_read=0;
@@ -136,6 +133,11 @@ int dac_task(void *arg)
 				//filling the rest of buffer with zeros if necessary
 				if(bytes < 2048)
 				{
+					ramp_startpos = bytes > 256 ? bytes-256 : 0;
+					step = ((float)buf[ramp_startpos]-128)/256;
+					for(int j=0;j < 256;j++)
+					buf[j] = 128+(int)((256-j)*step);
+					//memset(buf, 128, 256);
 					memset(buf+bytes,128,2048-bytes);
 				}
 
@@ -155,6 +157,14 @@ void app_main(void)
 {
 	printf("Hello world!\n");
 
+	distance_reaction_init();
+
+	if(mount_partition("files","/files") < 0)
+	{
+		printf("Failed to mount partition\n");
+		return;
+	}
+
 	gpio_install_isr_service(0);
 
 	gpio_reset_pin(TX_PIN);
@@ -167,19 +177,19 @@ void app_main(void)
 	gpio_isr_handler_add(RX_PIN, sonar_on_rx, NULL);
 
 	xTaskCreate(measurement_task,"measurement_task",2048,NULL,10,NULL);
-	xTaskCreate(dac_task,"dac_task",2048,NULL,10,NULL);
+	xTaskCreate(dac_task,"dac_task",4096,NULL,10,NULL);
 	
 	while(1)
 	{
 		if(!dac_active)
 		{
-			xQueueSend(dac_queue, &filenum, NULL);
-			filenum = filenum==33 ? 1 : filenum+1;
+			//xQueueSend(dac_queue, &filenum, NULL);
+			filenum = filenum==35 ? 1 : filenum+1;
 		}
 
 		printf("%.2f\n",distance);
 
-		upd_distance(distance);
+		upd_distance(distance, dac_queue);
 		fflush(stdout);	
 		
 		vTaskDelay(500/portTICK_PERIOD_MS);

@@ -12,7 +12,7 @@ for pack in os.listdir('ogg'):
 		if os.path.isfile('wav/'+tpath):
 			print('Skipping '+path)
 			continue
-		cmd = 'ffmpeg -i "ogg/'+path+'" -acodec pcm_u8 -ac 1 -ar 10000 -filter:a "atempo=1.2" "wav/'+tpath+'"'
+		cmd = 'ffmpeg -i "ogg/'+path+'" -acodec pcm_u8 -ac 1 -ar 16000 -filter:a "atempo=1.2" "wav/'+tpath+'"'
 		print(cmd)
 		os.system(cmd)
 		

@@ -15,21 +15,37 @@ int main()
 {
 	srand(time(NULL));
 	int used_msgs[64];
+	int used_msgs_ptr = 0;
 	memset(used_msgs, 0, sizeof(used_msgs));
 	int msg;
 	//distance_reaction_run();
-	for(int i = 0; i < 4; i++) {
+	for(int lvl = 0; lvl < 4; lvl++) {
+		msg = 0;
 		while(1)
 		{
-			msg = lvlmsgs[i][rand()%sizeof(lvlmsgs[i])];
-			for(int j = 0; j < 64; j++)
+			for(int k=0; k<16; k++)
 			{
-				if(used_msgs[j]==msg)
-					continue;
+				msg = lvlmsgs[lvl][rand()%sizeof(lvlmsgs[lvl])];
+				for(int j = 0; j < used_msgs_ptr; j++)
+				{
+					if(used_msgs[j]==msg)
+					{
+						msg = 0;
+						break;
+					}
+				}
+				if(msg)
+					break;
 			}
-			break;
+			if(msg)break;
+			used_msgs_ptr = 0;
 		}
-		printf("lvl: %d; msg: %d\n", i, msg);	
+		used_msgs[used_msgs_ptr++]=msg;
+		if(used_msgs_ptr >= 32)
+			used_msgs_ptr = 0;
+		
+		//last_said = nupdates;
+		printf("lvl: %d; msg: %d\n", lvl, msg);	
 	}
 	
 }
