@@ -1,80 +1,97 @@
 #include <stdio.h>
-#include <time.h>
-#include <stdlib.h>
 #include <string.h>
 #include "freertos/queue.h"
+#include "esp_timer.h"
+
+#include "sounds_data.c"
 
 #ifdef TESTING
 
 #define HYSTERESIS_ADD	0.3
 #define CANSAY_DELAY	1
 #define CANSAY_RAND		1
-float approach_steps[] = {3, 2, 1, 0.5};
+float approach_lvls[] = {3, 2, 1, 0.5};
 
 #elif defined DEVICE_TEST
 
-float approach_steps[] = {0.6, 0.45, 0.3};
-#define HYSTERESIS_ADD	0.15
-#define CANSAY_DELAY	18
-#define CANSAY_RAND		3
+float approach_lvls[] = {0.8, 0.6, 0.45, 0.3};
+#define HYSTERESIS_ADD	0.1
+#define CANSAY_DELAY	4
+#define CANSAY_RAND		2
 
 #else 
 
-#define HYSTERESIS_ADD	0.3
+#define HYSTERESIS_ADD	0.2
 #define CANSAY_DELAY	6
 #define CANSAY_RAND		3
-float approach_steps[] = {3, 2, 1, 0.5};
+float approach_lvls[] = {4, 2, 1, 0.5};
 
 #endif
 
 typedef struct {
 	int started;
-	int messages;
-	int introduced;
-	int approached;
-	int departured;
+	int lvl_messages[3];
 	int destroy_countdown;
-	int used_msgs[64];
-	int used_msgs_ptr;
+	int attack;
 } session_t;
 
+#define RECENTS_LEN 24
+
+int recent_msgs[RECENTS_LEN];
+void fifo_add(int *fifo, int fifo_size, int val)
+{
+	for(int i = fifo_size-1; i > 0; i--)
+	{
+		fifo[i] = fifo[i-1];
+	}
+	fifo[0] = val;
+}
+
 static int nupdates;
-static int direction = 0;
 static session_t session;
-static int cur_step = -1, last_step = -1;
-static int idle_counter = 0;
+static int cur_lvl = -1, last_lvl = -1, last_act_lvl = -1;
 static int last_said = 0;
 
-static int lvl0_msgs[] = {1,  3,           15, 19, 25,   29, 36};
-static int lvl1_msgs[] = {  2,   4, 7, 8, 17, 23, 24,            26, 27,  30, 32, 33, 34};
-static int lvl2_msgs[] = {         5, 6, 7, 9, 10, 13, 14, 16, 17, 18, 28, 29, 31, 33, 34, 35};
-static int lvl3_msgs[] = {		 5, 6, 7, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 28, 29, 31, 32, 33, 34, 35};
 
-static int *lvlmsgs[] = {lvl0_msgs, lvl1_msgs, lvl2_msgs, lvl3_msgs};
 static int msg;
 
 void distance_reaction_init()
 {
-	srand(time(NULL));
+	//srand(time(NULL));
+	memset((void *)recent_msgs,0,RECENTS_LEN*sizeof(int));
 }
 
-int canSay()
+int is_session_started()
 {
-	return !last_said || (nupdates-last_said > CANSAY_DELAY && rand()%CANSAY_RAND == 0);
+	return session.started;
 }
 
-void say(int lvl)
+int canSay(int immediately)
 {
-	printf("Say lvl %d\n",lvl);
-	msg=0;
-	while(1)
+	int condition = immediately 
+		? nupdates > last_said
+		: ((nupdates-last_said) > CANSAY_DELAY);// && (rand()%CANSAY_RAND) == 0);
+	printf("cansay(%d) condition: %d\n", immediately, condition);
+	return session.started && (!last_said || condition);
+}
+
+int getRandMsg(int lvl)
+{
+	int msg = 0;
+	int fifolen = RECENTS_LEN;
+	int last_msg_found = 0;
+	
+	int sublevel = session.lvl_messages[lvl-1] ? 1 : 0;
+	printf("Sublvl %d\n",sublevel);
+	for(int i=0; i < 3; i++)
 	{
-		for(int k=0; k<16; k++)
+		for(int j=0; j < lvlsizes[lvl][sublevel]*2; j++)
 		{
-			msg = lvlmsgs[lvl][rand()%sizeof(lvlmsgs[lvl])];
-			for(int j = 0; j < session.used_msgs_ptr; j++)
+			msg = lvlmsgs[lvl-1][sublevel][esp_timer_get_time() % lvlsizes[lvl-1][sublevel]];
+			last_msg_found = msg;
+			for(int k=0; k < fifolen; k++)
 			{
-				if(session.used_msgs[j]==msg)
+				if(recent_msgs[k]==msg)
 				{
 					msg = 0;
 					break;
@@ -82,52 +99,103 @@ void say(int lvl)
 			}
 			if(msg)
 				break;
+			printf("mgs not found l2\n");
 		}
-		if(msg)break;
-		session.used_msgs_ptr = 0;
+		if(msg)
+			break;
+		printf("mgs not found l1\n");
+		fifolen = (int)(fifolen/2);
 	}
-	session.used_msgs[session.used_msgs_ptr++]=msg;
-	if(session.used_msgs_ptr >= 32)
-		session.used_msgs_ptr = 0;
+
+	if(!msg)
+	{
+		printf("NO MESSAGE FOUND!!!");
+		msg = last_msg_found;
+	}
+	printf("message found: %d\n", msg);
+	printf("message duration: %d\n",msg_durations[msg-1]);
+	return msg;
+}
+
+void say(int lvl)
+{
+	printf("Say(%d)\n",lvl);
+
+	for(int i=0; i < lvl; i++)
+	{
+		if(!session.lvl_messages[i])
+		{
+			lvl = i+1;
+			break;
+		}
+	}
+
+	printf("Saying lvl %d\n",lvl);
+
+	msg=0;
+	if(lvl>=2 && (session.lvl_messages[1] + session.lvl_messages[2]) > 2 && !session.attack)
+	{
+		msg = 21; // to attack
+		session.attack = 1;
+	}
+	else if(session.attack == 2)
+	{
+		msg = 40; // to attack
+		session.attack = 3;
+	}
+	else
+		msg = getRandMsg(lvl);
 	
-	last_said = nupdates;
-	session.messages++;
+	last_said = nupdates+(msg_durations[msg-1]*2);
+	session.lvl_messages[lvl-1]++;
+	fifo_add(recent_msgs, RECENTS_LEN, msg);
 	xQueueSend(dac_queue, &msg, NULL);
 }
 
-void new_session()
+int attack_steps[] = {10,20,40,70,100,150,200,300,500,700,1000};
+void moveServo(int fwd)
 {
-	printf("new session\n");
-	if(!canSay())return;
-	say(0);
-	session.introduced = 1;
+	printf("moveServo %d\n", fwd);
+	for(int i=0; i < 30; i++)
+	{
+		gpio_set_level(SERVO_PIN,1);
+		usleep(500 + (fwd ? 1700 : 0));
+		gpio_set_level(SERVO_PIN,0);
+		vTaskDelay(20/portTICK_PERIOD_MS);
+	}
+	// for(int step=0; step < 11; step++)
+	// {
+		
+	// }
 }
 
-void close_session()
+void attack()
 {
-	if(canSay())
-		say("Bye!");
+	moveServo(1);
+	vTaskDelay(1000/portTICK_PERIOD_MS);
+	moveServo(0);
 }
-
-void sayNext()
-{
-	say(session.messages < 4 ? session.messages : 3);
-}
-
 
 void upd_distance(float dist, QueueHandle_t dac_queue)
 {
 	nupdates++;
-	cur_step = -1;
-	float threshold;
-	for(int i=0; i < 3; i++)
+	
+	if(nupdates >= last_said && session.attack == 1)
 	{
-		threshold = approach_steps[i];
-		if(last_step >= i)
+		attack();
+		session.attack = 2;
+	}
+
+	cur_lvl = -1;
+	float threshold;
+	for(int i=0; i < 4; i++)
+	{
+		threshold = approach_lvls[i];
+		if(last_lvl >= i)
 			threshold += HYSTERESIS_ADD;
 		if(dist <= threshold)
 		{
-			cur_step = i;
+			cur_lvl = i;
 			//printf("Thr: %.3f\n",threshold);
 		}
 		else
@@ -136,79 +204,54 @@ void upd_distance(float dist, QueueHandle_t dac_queue)
 		}
 	}
 
-	printf("Cur step: %d\n", cur_step);
+	printf("%d: Cur lvl: %d; Last lvl: %d; ses.started: %d; last_said: %d\n", nupdates, cur_lvl, last_lvl, session.started, last_said);
 	
-	//if idle
 
-	if(cur_step >= 0)
+	if(cur_lvl >= 0)
 	{
 		session.destroy_countdown = 10;
-		if(last_step == cur_step)
+		if(last_act_lvl == cur_lvl)
 		{
-			idle_counter++;
-
-			if(canSay())
+			if(cur_lvl > 0 && canSay(0))
 			{
-				if(cur_step > 0)
-					sayNext();
+				say(cur_lvl);
 			}
-			
-			return;
 		}
 	}
 
-	if(!session.started && cur_step >= 0)
+	if(!session.started && cur_lvl >= 0)
 	{
-		session = (session_t) {
-			.started = nupdates,
-			.messages = 0,
-			.introduced = 0,
-			.approached = 0,
-			.departured = 0,
-			.destroy_countdown = 10, //5 sec
-			.used_msgs_ptr = 0
-		};
-		new_session();
+		if(nupdates > 10)
+		{
+			session = (session_t) {
+				.started = nupdates,
+				.lvl_messages = {0,0,0},
+				.destroy_countdown = 10, //5 sec
+				.attack = 0
+			};
+			printf("new session\n");
+		}
 	}
-	else if(session.started && cur_step < 0)
+	
+	if(session.started && cur_lvl < 0 && nupdates > last_said)
 	{
 		if(session.destroy_countdown-- <= 0)
 		{
 			session.started = 0;
 			last_said = 0;
+			last_act_lvl = -1;
 			printf("closing session\n");
-			// if(last_step > 0)
-			// 	depart(0);
-			// else if(session.introduced)
-			// 	close_session();
 		}
 		
 	}
-	else if(cur_step > last_step)
+	
+	if(session.started && cur_lvl > 0 && last_lvl > 0 && cur_lvl != last_act_lvl)
 	{
-		sayNext();
+		if(canSay(1))
+			say(cur_lvl);
 	}
-	// else
-	// {
-	// 	depart();
-	// 	session.approached = 1;
-	// }
 
-	last_step = cur_step;
+	last_lvl = cur_lvl;
+	if(cur_lvl > 0)
+		last_act_lvl = cur_lvl;
 }
-
-#ifdef TESTING
-void distance_reaction_run()
-{
-	session.started=0;
-	float input_distance;
-	srand(time(NULL));
-
-	while(1)
-	{
-		printf("Input distance: ");
-		scanf("%f",&input_distance);
-		upd_distance(input_distance);
-	}
-}
-#endif

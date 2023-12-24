@@ -11,7 +11,7 @@ static int lvl3_msgs[] = {		 5, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 28, 29, 3
 
 static int *lvlmsgs[] = {lvl0_msgs, lvl1_msgs, lvl2_msgs, lvl3_msgs};
 
-int main()
+void test1()
 {
 	srand(time(NULL));
 	int used_msgs[64];
@@ -47,5 +47,29 @@ int main()
 		//last_said = nupdates;
 		printf("lvl: %d; msg: %d\n", lvl, msg);	
 	}
-	
+}
+
+int fifo[16];
+void fifo_add(int *fifo, int fifo_size, int val)
+{
+	for(int i = fifo_size-1; i > 0; i--)
+	{
+		fifo[i] = fifo[i-1];
+	}
+	fifo[0] = val;
+}
+
+int main()
+{
+	// printf("fifo size %d",sizeof(fifo));
+	// //return 0;
+	// for(int i=0; i<20; i++)
+	// {
+	// 	fifo_add(fifo,16,i);
+	// 	for(int j=0; j<16; j++)
+	// 		printf("%d, ",fifo[j]);
+	// 	printf("\n");
+	// }
+
+
 }
