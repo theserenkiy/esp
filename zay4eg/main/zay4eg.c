@@ -19,14 +19,19 @@ volatile int dac_active = 0;
 #include "dac.c"
 #include "blinker.c"
 
-#define DEVICE_TEST
+//#define DEVICE_TEST
 
 #define TX_PIN 26
 #define RX_PIN 27
 #define SERVO_PIN 15
 #define DIST_FILTER_SIZE 8
+#define MOTOR_0_IN1_PIN	17
+#define MOTOR_0_IN2_PIN	5
+#define MOTOR_1_IN1_PIN	18
+#define MOTOR_1_IN2_PIN	19
 
 #include "distance_reaction.c"
+#include "motor.c"
 
 
 volatile uint64_t sonar_tx_time;
@@ -196,7 +201,10 @@ void app_main(void)
 	gpio_isr_handler_add(RX_PIN, sonar_on_rx, NULL);
 
 	xTaskCreate(sonar_task,"sonar_task",2048,NULL,10,NULL);
+
+	motor_init();
 	
+	int cnt = 0;
 	while(1)
 	{
 		if(!dac_active)
@@ -207,9 +215,12 @@ void app_main(void)
 
 		printf("dist %.2f\n",distance);
 
-		upd_distance(distance, dac_queue);
+		//upd_distance(distance, dac_queue);
+		setMotorPower(0, 0.3, cnt % 2);
+		setMotorPower(1, 0.6, (cnt % 2) + 1);
 		fflush(stdout);	
 		
+		cnt++;
 		vTaskDelay(500/portTICK_PERIOD_MS);
 	}
 }

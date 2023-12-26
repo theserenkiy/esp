@@ -22,9 +22,9 @@ float approach_lvls[] = {0.8, 0.6, 0.45, 0.3};
 #else 
 
 #define HYSTERESIS_ADD	0.2
-#define CANSAY_DELAY	6
-#define CANSAY_RAND		3
-float approach_lvls[] = {4, 2, 1, 0.5};
+#define CANSAY_DELAY	5
+#define CANSAY_RAND		2
+float approach_lvls[] = {4, 3, 2, 1};
 
 #endif
 
@@ -85,7 +85,7 @@ int getRandMsg(int lvl)
 	printf("Sublvl %d\n",sublevel);
 	for(int i=0; i < 3; i++)
 	{
-		for(int j=0; j < lvlsizes[lvl][sublevel]*2; j++)
+		for(int j=0; j < lvlsizes[lvl-1][sublevel]*2; j++)
 		{
 			msg = lvlmsgs[lvl-1][sublevel][esp_timer_get_time() % lvlsizes[lvl-1][sublevel]];
 			last_msg_found = msg;
@@ -133,17 +133,17 @@ void say(int lvl)
 	printf("Saying lvl %d\n",lvl);
 
 	msg=0;
-	if(lvl>=2 && (session.lvl_messages[1] + session.lvl_messages[2]) > 2 && !session.attack)
-	{
-		msg = 21; // to attack
-		session.attack = 1;
-	}
-	else if(session.attack == 2)
-	{
-		msg = 40; // to attack
-		session.attack = 3;
-	}
-	else
+	// if(lvl>=2 && (session.lvl_messages[1] + session.lvl_messages[2]) > 2 && !session.attack)
+	// {
+	// 	msg = 21; // to attack
+	// 	session.attack = 1;
+	// }
+	// else if(session.attack == 2)
+	// {
+	// 	msg = 40; // to attack
+	// 	session.attack = 3;
+	// }
+	// else
 		msg = getRandMsg(lvl);
 	
 	last_said = nupdates+(msg_durations[msg-1]*2);
@@ -159,7 +159,7 @@ void moveServo(int fwd)
 	for(int i=0; i < 30; i++)
 	{
 		gpio_set_level(SERVO_PIN,1);
-		usleep(500 + (fwd ? 1700 : 0));
+		usleep(900 + (fwd ? 1200 : 0));
 		gpio_set_level(SERVO_PIN,0);
 		vTaskDelay(20/portTICK_PERIOD_MS);
 	}
@@ -180,11 +180,11 @@ void upd_distance(float dist, QueueHandle_t dac_queue)
 {
 	nupdates++;
 	
-	if(nupdates >= last_said && session.attack == 1)
-	{
-		attack();
-		session.attack = 2;
-	}
+	// if(!(nupdates % 5))//nupdates >= last_said && session.attack == 1)
+	// {
+	// 	attack();
+	// 	session.attack = 2;
+	// }
 
 	cur_lvl = -1;
 	float threshold;
