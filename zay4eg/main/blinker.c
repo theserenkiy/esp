@@ -9,14 +9,7 @@
 
 void blinker_init()
 {
-    ledc_timer_config_t ledc_timer = {
-        .speed_mode       = LEDC_LOW_SPEED_MODE, 
-        .timer_num        = LEDC_TIMER_0,
-        .duty_resolution  = LEDC_TIMER_10_BIT,
-        .freq_hz          = 15000,  // Set output frequency at 5 kHz
-        .clk_cfg          = LEDC_AUTO_CLK
-    };
-    ledc_timer_config(&ledc_timer);
+    
 
 	ledc_channel_config_t ledc_channel_0 = {
         .speed_mode     = LEDC_LOW_SPEED_MODE,

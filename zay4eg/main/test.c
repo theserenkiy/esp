@@ -61,6 +61,9 @@ void fifo_add(int *fifo, int fifo_size, int val)
 
 int main()
 {
+
+	printf("%f\n", 1/(float)(10%7));
+
 	// printf("fifo size %d",sizeof(fifo));
 	// //return 0;
 	// for(int i=0; i<20; i++)

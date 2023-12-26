@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <unistd.h>
 #include <inttypes.h>
@@ -29,6 +28,8 @@ volatile int dac_active = 0;
 #define MOTOR_0_IN2_PIN	5
 #define MOTOR_1_IN1_PIN	18
 #define MOTOR_1_IN2_PIN	19
+
+#define MOTOR_ACCEL_STEP 10
 
 #include "distance_reaction.c"
 #include "motor.c"
@@ -160,9 +161,36 @@ void blink_task(void *arg)
 {
 	while(1)
     {
-        blink(is_session_started() ? 20 : 100);
+        blink(is_session_started() ? 20 : 100, );
 		vTaskDelay(10/portTICK_PERIOD_MS);
     }
+}
+
+
+volatile int motor_control[] = {0,0};
+volatile int motor_state[] = {0,0};
+void motor_task(void *arg)
+{
+	int diff;
+	int absdiff;
+	int sign;
+	while(1)
+	{
+		for(int motor = 0; motor < 2; motor++)
+		{
+			diff = motor_control[motor] - motor_state[motor];
+			printf("diff = %d\n", diff);
+			absdiff = diff < 0 ? -diff : diff;
+			sign = diff < 0 ? -1 : 1;
+			if(diff != 0)
+			{
+				motor_state[motor] += sign*(absdiff < MOTOR_ACCEL_STEP ? absdiff : MOTOR_ACCEL_STEP);
+			}
+			setMotorPower(motor, motor_state[motor]);
+		}
+
+		vTaskDelay(50/portTICK_PERIOD_MS);
+	}
 }
 
 
@@ -178,9 +206,16 @@ void app_main(void)
 		return;
 	}
 
+	ledc_timer_config_t ledc_timer = {
+        .speed_mode       = LEDC_LOW_SPEED_MODE, 
+        .timer_num        = LEDC_TIMER_0,
+        .duty_resolution  = LEDC_TIMER_10_BIT,
+        .freq_hz          = 15000,
+        .clk_cfg          = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&ledc_timer);
 	blinker_init();
 
-	
 	xTaskCreate(dac_task,"dac_task",4096,NULL,10,NULL);
 	xTaskCreate(blink_task,"blink_task",2048,NULL,10,NULL);
 
@@ -203,8 +238,11 @@ void app_main(void)
 	xTaskCreate(sonar_task,"sonar_task",2048,NULL,10,NULL);
 
 	motor_init();
+	xTaskCreate(motor_task,"motor_task",2048,NULL,10,NULL);
 	
 	int cnt = 0;
+	int motor_controls[6][2] = {{100,100},{100,-100},{-100,-100},{-100,100},{0,100}};
+	int key;
 	while(1)
 	{
 		if(!dac_active)
@@ -216,9 +254,11 @@ void app_main(void)
 		printf("dist %.2f\n",distance);
 
 		//upd_distance(distance, dac_queue);
-		setMotorPower(0, 0.3, cnt % 2);
-		setMotorPower(1, 0.6, (cnt % 2) + 1);
-		fflush(stdout);	
+		printf("cnt: %d\n",cnt);
+
+		key = ((int)cnt/5)%5;
+		motor_control[0] = motor_controls[key][0];
+		motor_control[1] = motor_controls[key][1];
 		
 		cnt++;
 		vTaskDelay(500/portTICK_PERIOD_MS);
