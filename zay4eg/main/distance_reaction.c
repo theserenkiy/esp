@@ -161,7 +161,7 @@ void moveServo(int fwd)
 		gpio_set_level(SERVO_PIN,1);
 		usleep(900 + (fwd ? 1200 : 0));
 		gpio_set_level(SERVO_PIN,0);
-		vTaskDelay(20/portTICK_PERIOD_MS);
+		vTaskDelay(20/portTICK_PERIOD_MS); 
 	}
 	// for(int step=0; step < 11; step++)
 	// {

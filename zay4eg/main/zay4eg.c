@@ -93,14 +93,13 @@ void sonar_task(void *arg)
 }
 
 
-
 int dac_task(void *arg)
 {
 	dac_queue = xQueueCreate(10, sizeof(uint32_t));
 
 	dac_continuous_handle_t dac = dac_continious_init(16000);
 	FILE *fp;
-	char fname[32];
+	char fname[8];
 	int bytes;
 	int first_read = 0;
 	float step;
@@ -135,18 +134,18 @@ int dac_task(void *arg)
 				first_read=0;
 				//printf("Bytes read: %d\n",bytes);
 
-				//filling the rest of buffer with zeros if necessary
+				//ramping end of the file
+				//and filling the rest of buffer with '128' if necessary
 				if(bytes < 2048)
 				{
 					ramp_startpos = bytes > 256 ? bytes-256 : 0;
 					step = ((float)buf[ramp_startpos]-128)/256;
 					for(int j=0;j < 256;j++)
 					buf[j] = 128+(int)((256-j)*step);
-					//memset(buf, 128, 256);
 					memset(buf+bytes,128,2048-bytes);
 				}
 
-				// DAC write
+				// DAC write 
 				dac_continuous_write(dac, buf, 2048, NULL, -1);
 			}
 			fclose(fp);
@@ -161,7 +160,7 @@ void blink_task(void *arg)
 {
 	while(1)
     {
-        blink(is_session_started() ? 20 : 100, );
+        blink(is_session_started() ? 20 : 100);
 		vTaskDelay(10/portTICK_PERIOD_MS);
     }
 }
@@ -237,11 +236,11 @@ void app_main(void)
 
 	xTaskCreate(sonar_task,"sonar_task",2048,NULL,10,NULL);
 
-	motor_init();
-	xTaskCreate(motor_task,"motor_task",2048,NULL,10,NULL);
+	//motor_init();
+	//xTaskCreate(motor_task,"motor_task",2048,NULL,10,NULL);
 	
 	int cnt = 0;
-	int motor_controls[6][2] = {{100,100},{100,-100},{-100,-100},{-100,100},{0,100}};
+	int motor_controls[5][2] = {{100,100},{100,-100},{-100,-100},{-100,100},{0,100}};
 	int key;
 	while(1)
 	{
@@ -253,12 +252,12 @@ void app_main(void)
 
 		printf("dist %.2f\n",distance);
 
-		//upd_distance(distance, dac_queue);
+		upd_distance(distance, dac_queue);
 		printf("cnt: %d\n",cnt);
 
-		key = ((int)cnt/5)%5;
-		motor_control[0] = motor_controls[key][0];
-		motor_control[1] = motor_controls[key][1];
+		// key = ((int)cnt/5)%5;
+		// motor_control[0] = motor_controls[key][0];
+		// motor_control[1] = motor_controls[key][1];
 		
 		cnt++;
 		vTaskDelay(500/portTICK_PERIOD_MS);
