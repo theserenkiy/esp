@@ -16,21 +16,31 @@
 
 //uint8_t frame[100000];
 
-#define HSYNC_MAX_DELAY_US 1000	
+#define FRAME_DETECT_DELAY_US 20000	
 
 static QueueHandle_t vsync_queue = NULL;
 
-static uint16_t last_hsync = 0;
+volatile static uint64_t last_pclk = 0;
+volatile static uint64_t curtime;
+volatile static uint64_t delay;
+volatile static uint32_t pixel_cnt = 0;
+volatile static uint32_t pixel_cnt_last = 0;
+volatile static uint64_t frame_updated = 0;
 static uint8_t line_active = 0;
-static void IRAM_ATTR on_hsync(void *arg)
+static uint8_t frame_captured = 0;
+static void IRAM_ATTR on_pclk(void *arg)
 {
-	static uint64_t curtime;
 	curtime = esp_timer_get_time();
-	if(curtime > last_hsync + HSYNC_MAX_DELAY_US)
+	delay = curtime - last_pclk;
+	last_pclk = curtime;
+	pixel_cnt++;
+	if(delay > FRAME_DETECT_DELAY_US)
 	{
-		xQueueSendFromISR(vsync_queue, &curtime, NULL);	
+		pixel_cnt_last = pixel_cnt;
+		frame_updated = curtime;
+		pixel_cnt = 0;
+		//xQueueSendFromISR(vsync_queue, &delay, NULL);	
 	}
-	last_hsync = curtime;
 }
 
 void vsync_task(void *arg)
@@ -40,7 +50,9 @@ void vsync_task(void *arg)
 	{
 		if(xQueueReceive(vsync_queue, &time, portMAX_DELAY))
 		{
-			//printf("new frame @ %llu\n",time);
+			printf("new frame @ %llu\n",time);
+			printf("pixels read: %lu\n",pixel_cnt_last);
+			pixel_cnt = 0;
 		}
 	}
 }
@@ -93,31 +105,34 @@ void app_main()
 	sccb_write(SCCB_ID,0x12,(1 << 7));	//register reset
 	usleep(1000);
 
-	sccb_write(SCCB_ID,0x11,5);					//Divide CLK by
+	sccb_write(SCCB_ID,0x11,10);					//Divide CLK by
 	//COM15
-	sccb_write(SCCB_ID,0x40,(0b11 << 4));			//RGB 555
+	//sccb_write(SCCB_ID,0x40,(0b01 << 4));			//RGB 555
 	//COM7
-	sccb_write(SCCB_ID,0x12,(1 << 3));// | (1 << 2));	//QCIF resolution, YUV // RGB
-
+	sccb_write(SCCB_ID,0x12,(1 << 4));// | (1 << 2));	//QVGA resolution, YUV // RGB
+	//COM10
+	sccb_write(SCCB_ID,0x15,(1 << 5));// disable PCLK for hor blank 
 
 
 	vsync_queue = xQueueCreate(2, sizeof(uint32_t));
 	xTaskCreate(vsync_task,"vsync_task",2048,NULL,10,NULL);
 
 	gpio_install_isr_service(0);
-	gpio_reset_pin(PIN_HSYNC);
-	gpio_set_direction(PIN_HSYNC,GPIO_MODE_INPUT);
-	gpio_set_intr_type(PIN_HSYNC, GPIO_INTR_POSEDGE);
-	gpio_isr_handler_add(PIN_HSYNC, on_hsync, NULL);
+	gpio_reset_pin(PIN_PCLK);
+	gpio_set_direction(PIN_PCLK,GPIO_MODE_INPUT);
+	gpio_set_intr_type(PIN_PCLK, GPIO_INTR_POSEDGE);
+	gpio_isr_handler_add(PIN_PCLK, on_pclk, NULL);
 	
 
 	while(1)
 	{
-		dumpreg(0x0A);
-		dumpreg(0x0B);
-		dumpreg(0x11);
-		dumpreg(0x12);
-		dumpreg(0x40);
+		// dumpreg(0x0A);
+		// dumpreg(0x0B);
+		// dumpreg(0x11);
+		// dumpreg(0x12);
+		// dumpreg(0x15);
+		// dumpreg(0x40);
+		printf("Pixel cnt last: %lu  @  %llu\n",pixel_cnt_last, frame_updated);
 		vTaskDelay(500/portTICK_PERIOD_MS);
 	}
 }

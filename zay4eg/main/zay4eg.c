@@ -236,7 +236,7 @@ void app_main(void)
 
 	xTaskCreate(sonar_task,"sonar_task",2048,NULL,10,NULL);
 
-	//motor_init();
+	motor_init();
 	//xTaskCreate(motor_task,"motor_task",2048,NULL,10,NULL);
 	
 	int cnt = 0;
