@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bmp-js": "^0.1.0"
+    "bmp-js": "^0.1.0",
+    "serialport": "^12.0.0"
   }
 }

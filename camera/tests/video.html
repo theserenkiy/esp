@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>VIDEO</title>
+
+<script>
+const cl = console.log;
+
+window.onload = ()=>{
+	let canvas = document.querySelector('canvas');
+	let ctx = canvas.getContext('2d');
+	let last_id = 0;
+	setInterval(async()=>{
+		let res = await fetch('/frame_id.json?'+Date.now());
+		let frame_id = (await res.json()).frame_id;
+		cl('frame_id',frame_id);
+		if(frame_id == last_id)
+			return;
+
+		last_id = frame_id;
+
+		res = await fetch('/frames/'+frame_id+'.bin');
+		let buf = await res.arrayBuffer();
+		cl('buf len',buf.byteLength);
+		
+		let arr = new Uint8Array(buf);
+		cl(arr)
+		let imageData = ctx.createImageData(315,240)
+		let idata = imageData.data;
+		for(let i=0; i < buf.byteLength;i++)
+		{
+			idata[i*4] = arr[i];
+			idata[i*4+1] = arr[i];
+			idata[i*4+2] = arr[i];
+			idata[i*4+3] = 255;
+		}
+		cl('idata',imageData)
+		ctx.putImageData(imageData,0,0)
+		cl('idata written')
+	},500);
+}
+</script>
+</head>
+<body>
+	<canvas width="315" height="240"></canvas>
+</body>
+</html>

@@ -1,5 +1,8 @@
 {
 	"files.associations": {
-		"inttypes.h": "c"
+		"inttypes.h": "c",
+		"gpio_hal.h": "c",
+		"soc_caps.h": "c",
+		"gpio_periph.h": "c"
 	}
 }
