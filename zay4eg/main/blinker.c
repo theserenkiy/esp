@@ -6,7 +6,7 @@
 
 #include "driver/ledc.h"
 
-
+int qqq;
 void blinker_init()
 {
     

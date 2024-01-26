@@ -14,6 +14,9 @@
 #include "esp_heap_caps.h"
 #include "sccb.c"
 
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
 //#define FRAME_BUFFER_SIZE 10000
 
 //uint8_t frame[100000];
@@ -145,8 +148,44 @@ void read_bench(int iters)
 	printf("Total delay: %lu; iter delay: %.5f, ioreg: %lu\n",delay,(float)delay/iters,ioreg);
 }
 
+int connectToServer()
+{
+	//структура для хранения данных об адресе сервера
+	struct sockaddr_in serveraddr;
+
+	//инициализация адреса сервера (куда подключаемся)
+	serveraddr.sin_family = AF_INET;
+	serveraddr.sin_addr.s_addr = inet_addr(HOST_IP);
+	serveraddr.sin_port = htons(HOST_PORT);
+
+	//Создаём сокет
+	int sd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sd < 0)
+	{ 
+		printf("ERROR opening socket failed\n");
+		return -1;
+	}
+
+	//Подключаемся к серверу
+	if (connect(sd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
+	{
+		printf("ERROR connecting failed\n");
+		return -1;
+	}
+	
+	return sd;
+}
+
 void app_main()
 {
+	wifi_init("Princess-in-Tower","internetzadrakona");
+
+	wait_for_wifi();
+
+	printf("WiFi ready\n");
+
+	
+
 	// gpio_reset_pin(19);
 	// gpio_set_direction(19,GPIO_MODE_INPUT);
 	// gpio_set_pull_mode(19,GPIO_PULLUP_ONLY);
@@ -289,6 +328,6 @@ void app_main()
 
 		//read_bench(1000000);
 
-		vTaskDelay(100/portTICK_PERIOD_MS);
+		vTaskDelay(10/portTICK_PERIOD_MS);
 	}
 }
