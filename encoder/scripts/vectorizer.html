@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VECTORIZER</title>
+<script>
+
+const cl = console.log;
+
+const CANVAS_DIM = [320,240];
+
+function getLumaMatrix(idata)
+{
+    let out = new Uint8Array(idata.length/4);
+    for(let i=0; i < idata.length;i+=4)
+    {
+        out[i/4] = Math.round((idata[i]+idata[i+1]+idata[i+2])/3);
+    }
+    return out;
+}
+
+window.onload = () => {
+
+    let canvass = document.querySelector('#src');
+    let ctxs = canvass.getContext('2d');
+    let canvasd = document.querySelector('#dst');
+    let ctxd = canvasd.getContext('2d');
+
+    canvass.width = CANVAS_DIM[0];
+    canvass.height = CANVAS_DIM[1];
+    canvasd.width = CANVAS_DIM[0];
+    canvasd.height = CANVAS_DIM[1];
+
+    let im = new Image();
+    im.onload = () => {
+        let ndim = [im.naturalWidth, im.naturalHeight]
+        cl(ndim);
+        
+        ctxs.drawImage(im,0,0,ndim[0],ndim[1],0,0,CANVAS_DIM[0],CANVAS_DIM[1]);
+
+        let idatas = ctxs.getImageData(0,0,CANVAS_DIM[0],CANVAS_DIM[1]);
+        let lmatr = getLumaMatrix(idatas.data);
+        cl(lmatr);
+        
+        let idatad = ctxd.createImageData(0,0,CANVAS_DIM[0],CANVAS_DIM[1]);
+        for(let i=0; i < lmatr.length; i++)
+        {
+            idatad.data[i*4] = lmatr[i];
+            idatad.data[i*4+1] = lmatr[i];
+            idatad.data[i*4+2] = lmatr[i];
+            idatad.data[i*4+3] = 0.5;
+        }
+
+        ctxd.putImageData(idatas,0,0);
+    }
+    im.src = '/kotik.jpg';
+
+
+
+}
+
+</script>
+</head>
+<body>
+
+<canvas id="src" width="320" height="240" style="border: 1px solid #aaa"></canvas>
+<canvas id="dst" width="320" height="240" style="border: 1px solid #aaa"></canvas>
+
+</body>
+</html>
