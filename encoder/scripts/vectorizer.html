@@ -1,60 +1,266 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VECTORIZER</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>VECTORIZER</title>
 <script>
 
 const cl = console.log;
 
-const CANVAS_DIM = [320,240];
+const CANVAS_DIM = [640,480];
+const IMAGE = '/kotik.jpg';
+const EDGE_LASTPIX_COUNT = 5;
+const EDGE_THRESHOLD = 16;
+const PATH_LOOKUP_DIST = 6;
+
 
 function getLumaMatrix(idata)
 {
-    let out = new Uint8Array(idata.length/4);
-    for(let i=0; i < idata.length;i+=4)
-    {
-        out[i/4] = Math.round((idata[i]+idata[i+1]+idata[i+2])/3);
-    }
-    return out;
+	let out = new Uint8Array(idata.length/4);
+	for(let i=0; i < idata.length;i+=4)
+	{
+		out[i/4] = Math.round((idata[i]+idata[i+1]+idata[i+2])/3);
+	}
+	return out;
+}
+
+function findEdgeProcess(row,col,ind,env,matrix,edges)
+{
+	let index = row*CANVAS_DIM[0]+col;
+	let pix = matrix[index];
+	let lastawg = env.lastpix.length 
+		? Math.floor(env.lastpix.reduce((a,v)=> a + v,0)/env.lastpix.length)
+		: -1;
+	env.lastpix[ind%EDGE_LASTPIX_COUNT] = pix;
+	if(lastawg >= 0 && Math.abs(pix-lastawg) > EDGE_THRESHOLD)
+	{
+		if(!env.continuing_edge)
+			edges[index] = 1;
+			env.continuing_edge = 1
+	}
+	else
+	{
+		//edges[index] = 0;
+		if(env.continuing_edge)
+			env.continuing_edge--;
+	}
+}
+
+function findEdges(matrix)
+{
+	let edges = new Uint8Array(CANVAS_DIM[0]*CANVAS_DIM[1]);
+	let lastpixels = [];
+	
+	for(let row=0;row < CANVAS_DIM[1];row++)
+	{
+		let env = {lastpix: [], continuing_edge: 0};
+		for(let col=0;col < CANVAS_DIM[0];col++)
+		{
+			findEdgeProcess(row,col,col,env,matrix,edges);		
+		}
+	}
+
+	for(let col=0;col < CANVAS_DIM[0];col++)
+	{
+		let env = {lastpix: [], continuing_edge: 0};
+		for(let row=0;row < CANVAS_DIM[1];row++)
+		{
+			findEdgeProcess(row,col,row,env,matrix,edges);	
+		}
+	}
+	return edges;
+		//.filter((v,i) => )
+}
+
+function setPixel(idata,ind,color)
+{
+	if(Array.isArray(ind))
+		ind = ind[1]*CANVAS_DIM[0]+ind[0];
+	for(let i=0;i < 3;i++)
+		if(color[i] >= 0)
+			idata.data[ind*4+i] =  color[i];
+
+	idata.data[ind*4+3] = 255;
+}
+//edges[i] ? 255 : 0;
+
+function getNeighbours(edges,ind)
+{
+	let neig = []
+	let coord = [ind%CANVAS_DIM[0],Math.floor(ind/CANVAS_DIM[0])]
+	let win = [
+		coord[0]-PATH_LOOKUP_DIST,
+		coord[0]+PATH_LOOKUP_DIST,
+		coord[1]-PATH_LOOKUP_DIST,
+		coord[1]+PATH_LOOKUP_DIST
+	];
+	let v;
+	for(let row=win[2]; row < win[3];row++)
+	{
+		if(row < 0 || row >= CANVAS_DIM[1])continue;
+		for(let col=win[0]; col < win[1];col++)
+		{
+			if(col < 0 || row >= CANVAS_DIM[0])continue;
+			if(col==coord[0] && row==coord[1])continue;
+			if(!edges[row*CANVAS_DIM[0]+col])
+				continue;
+			let relang = Math.atan2(coord[1]-row,col-coord[0]);
+			neig.push([col,row,relang,relang < 0 ? relang+3.1415 : relang])
+		}
+	}
+	let awg_angle = neig.reduce((a,v) => a + v[3],0)/neig.length;
+	neig = neig.filter(v => Math.abs(v[3]-awg_angle) < 20)
+	cl('Neig: ',neig);
+	let out = {
+		list: neig,
+		awg_angle
+	};
+	cl('Neig out: ',out);
+	return out;
+}
+
+function coord2abs(x,y)
+{
+	return y*CANVAS_DIM[0]+x;
+}
+
+function abs2coord(ind)
+{
+	return [ind%CANVAS_DIM[0],Math.floor(ind/CANVAS_DIM[0])];
+}
+
+function getNeighboursInDirection(edges,ind,angle=0)
+{
+	if(angle < -Math.PI)
+		angle += Math.PI*2
+	let neig = []
+	let coord = [ind%CANVAS_DIM[0],Math.floor(ind/CANVAS_DIM[0])]
+	let win = [
+		coord[0]-PATH_LOOKUP_DIST,
+		coord[0]+PATH_LOOKUP_DIST,
+		coord[1]-PATH_LOOKUP_DIST,
+		coord[1]+PATH_LOOKUP_DIST
+	];
+	let v;
+	for(let row=win[2]; row < win[3];row++)
+	{
+		if(row < 0 || row >= CANVAS_DIM[1])continue;
+		for(let col=win[0]; col < win[1];col++)
+		{
+			if(col < 0 || col >= CANVAS_DIM[0])continue;
+			if(col==coord[0] && row==coord[1])continue;
+			if(!edges[row*CANVAS_DIM[0]+col])
+				continue;
+			let dx = col-coord[0];
+			let dy = coord[1]-row;
+			let relang = Math.atan2(dy,dx);
+			neig.push([col,row,relang,Math.pow(dx,2)+Math.pow(dy,2)])
+		}
+	}
+	neig = neig.filter(v => Math.abs(v[2]-angle) < 1.57)
+	let awg_angle = neig.reduce((a,v) => a + v[2],0)/neig.length;
+	neig = neig.filter(v => Math.abs(v[2]-awg_angle) < 0.5)
+	let max_dist = Math.sqrt(Math.max(...neig.map(v => v[3])));
+	cl('Ind: ',ind,'; Coord: ',coord,'; Neig: ',neig);
+	let out = {
+		list: neig,
+		awg_angle,
+		max_dist,
+		end_point: [
+			Math.floor(coord[0]+Math.cos(awg_angle)*max_dist), 
+			Math.floor(coord[1]-Math.sin(awg_angle)*max_dist)
+		]
+	};
+	cl('Neig out: ',out);
+	return out;
+}
+
+function findPaths(edges,idata)
+{
+	let vector_points = [];
+	let vectors = [];
+	for(let i=0; i < edges.length; i++)
+	{
+		if(edges[i])
+		{
+			let ind = i;
+			let ang = 0;
+			for(let j=0;j < 70;j++)
+			{
+				let neig = getNeighboursInDirection(edges,ind,ang);
+				if(!neig.list)
+				{
+					ang -= 1.57;
+					continue;
+				}
+
+				for(let n of neig.list)
+				{
+					setPixel(idata,[n[0],n[1]],[0,255,0]);
+				} 
+				
+				setPixel(idata,neig.end_point,[0,0,255]);
+				ind = coord2abs(...neig.end_point);
+				ang = neig.awg_angle;
+				//break
+			}
+			
+			//return neig;
+			break;
+		}
+	}
 }
 
 window.onload = () => {
 
-    let canvass = document.querySelector('#src');
-    let ctxs = canvass.getContext('2d');
-    let canvasd = document.querySelector('#dst');
-    let ctxd = canvasd.getContext('2d');
+	let canvass = document.querySelector('#src');
+	let ctxs = canvass.getContext('2d');
+	let canvasd = document.querySelector('#dst');
+	let ctxd = canvasd.getContext('2d');
 
-    canvass.width = CANVAS_DIM[0];
-    canvass.height = CANVAS_DIM[1];
-    canvasd.width = CANVAS_DIM[0];
-    canvasd.height = CANVAS_DIM[1];
+	canvass.width = CANVAS_DIM[0];
+	canvass.height = CANVAS_DIM[1];
+	canvasd.width = CANVAS_DIM[0];
+	canvasd.height = CANVAS_DIM[1];
 
-    let im = new Image();
-    im.onload = () => {
-        let ndim = [im.naturalWidth, im.naturalHeight]
-        cl(ndim);
-        
-        ctxs.drawImage(im,0,0,ndim[0],ndim[1],0,0,CANVAS_DIM[0],CANVAS_DIM[1]);
+	let im = new Image();
+	im.onload = () => {
+		let ndim = [im.naturalWidth, im.naturalHeight]
+		cl(ndim);
+		
+		ctxs.drawImage(im,0,0,ndim[0],ndim[1],0,0,CANVAS_DIM[0],CANVAS_DIM[1]);
 
-        let idatas = ctxs.getImageData(0,0,CANVAS_DIM[0],CANVAS_DIM[1]);
-        let lmatr = getLumaMatrix(idatas.data);
-        cl(lmatr);
-        
-        let idatad = ctxd.createImageData(0,0,CANVAS_DIM[0],CANVAS_DIM[1]);
-        for(let i=0; i < lmatr.length; i++)
-        {
-            idatad.data[i*4] = lmatr[i];
-            idatad.data[i*4+1] = lmatr[i];
-            idatad.data[i*4+2] = lmatr[i];
-            idatad.data[i*4+3] = 0.5;
-        }
+		let idatas = ctxs.getImageData(0,0,CANVAS_DIM[0],CANVAS_DIM[1]);
+		let lmatr = getLumaMatrix(idatas.data);
+		cl(lmatr);
+		
+		let idatad = ctxd.createImageData(CANVAS_DIM[0],CANVAS_DIM[1]);
+		cl('idatad',idatad)
+		// for(let i=0; i < lmatr.length; i++)
+		// {
+		//     idatad.data[i*4] = lmatr[i];
+		//     idatad.data[i*4+1] = lmatr[i];
+		//     idatad.data[i*4+2] = lmatr[i];
+		//     idatad.data[i*4+3] = 255;
+		// }
 
-        ctxd.putImageData(idatas,0,0);
-    }
-    im.src = '/kotik.jpg';
+		let edges = findEdges(lmatr,16);
+
+		//cl('Edges: ',edges)
+
+		for(let i=0; i < edges.length;i++)
+		{
+			setPixel(idatad,i,edges[i] ? [255,0,0] : [255,255,255]);
+		}
+
+		let neig = findPaths(edges,idatad);
+
+	
+
+		ctxd.putImageData(idatad,0,0);
+	}
+	im.src = IMAGE;
 
 
 
