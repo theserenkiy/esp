@@ -1,4 +1,4 @@
-idf_component_register(SRCS "seg.c"
+idf_component_register(SRCS "risovaka.c"
                     INCLUDE_DIRS ""
                     )
 

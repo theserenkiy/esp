@@ -41,9 +41,9 @@ void app_main()
     };
 
     rmt_symbol_word_t word1 = {
-        .duration0 = 9,
+        .duration0 = 8,
 		.level0 = 1,
-		.duration1 = 3,
+		.duration1 = 4,
 		.level1 = 0
     };
 
@@ -60,12 +60,20 @@ void app_main()
         .flags.eot_level = 0
     };
 
-    uint8_t payload[] = {255,0,0,0,255,0};
+    uint8_t payload[48];
 
+    
+
+    int n = 0;
 	while(1)
 	{
-		rmt_transmit(tx_chan, encoder_handle, payload, 6,&tx_config);
-		vTaskDelay(10/portTICK_PERIOD_MS);	
+        for(int i=0; i < 48; i++)
+        {
+            payload[i] = (i+n) % 3 ? 0 : 32;
+        }
+        n++;
+		rmt_transmit(tx_chan, encoder_handle, payload, 48 ,&tx_config);
+		vTaskDelay(200/portTICK_PERIOD_MS);	
 	}
     
 
