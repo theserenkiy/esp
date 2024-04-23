@@ -20,6 +20,8 @@
 
 #define FSTEP 0.9
 #define HSTEP (FSTEP/2)
+#define BUTTON_ANGLE 8
+#define HANDLEN 110
 
 int motor_buttons[2] = {23,22};
 int motor_pins[2][4] = {{5,17,16,4},{26,25,33,32}};
@@ -180,19 +182,19 @@ void calibrate()
 	manySteps(-500,500,5);
 	manySteps(10,-10,5);
 
-	if(manySteps(-50,50,20))
+	if(manySteps(-50,50,40))
 	{
 		printf("Motor 0 calibrated\n");
-		positions[0] = -(8/HSTEP);
+		positions[0] = -(BUTTON_ANGLE/HSTEP);
 	}
 	
 	manySteps(500,-500,5);
 	manySteps(-10,10,5);
 
-	if(manySteps(50,-50,20))
+	if(manySteps(50,-50,40))
 	{
 		printf("Motor 1 calibrated\n");
-		positions[1] = -(8/HSTEP);
+		positions[1] = -(BUTTON_ANGLE/HSTEP);
 	}
 }
 
