@@ -18,10 +18,26 @@
 
 //Motor full step = 0.9
 
+/*
+
+          o  <- motor axis 
+          |
+          |  TOP_POS
+     ----------
+     |        |
+     |  AREA  |
+     |        |
+     ----------
+
+*/
+
+
 #define FSTEP 0.9
 #define HSTEP (FSTEP/2)
 #define BUTTON_ANGLE 8
 #define HANDLEN 110
+#define AREA_SIDE 100
+#define TOP_POS 80
 
 int motor_buttons[2] = {23,22};
 int motor_pins[2][4] = {{5,17,16,4},{26,25,33,32}};
