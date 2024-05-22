@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
@@ -36,8 +37,11 @@
 #define HSTEP (FSTEP/2)
 #define BUTTON_ANGLE 8
 #define HANDLEN 110
-#define AREA_SIDE 100
+#define AREA_SIDE 120
+#define AREA_CENTER (AREA_SIDE/2)
 #define TOP_POS 80
+
+#define RAD (float)180/M_PI
 
 int motor_buttons[2] = {23,22};
 int motor_pins[2][4] = {{5,17,16,4},{26,25,33,32}};
@@ -160,9 +164,9 @@ int manySteps(int step0, int step1,int delay)
 	return manyStepsArr(steps,delay);
 }
 
-int moveToAngle(int ang0, int ang1, int delay)
+int moveToAngle(float ang0, float ang1, int delay)
 {
-	int angs[2] = {ang0,ang1};
+	float angs[] = {ang0,ang1};
 	// for(int i=0;i < 2;i++)
 	// {
 	// 	if(angs[i] < 0)angs[i] = 0;
@@ -173,10 +177,36 @@ int moveToAngle(int ang0, int ang1, int delay)
 	// {
 	// 	angs[1] = 180-angs[0]-5;
 	// }
-	int destpos[2] = {angs[0]/HSTEP, angs[1]/HSTEP};
+	int destpos[] = {angs[0]/HSTEP, angs[1]/HSTEP};
 	printf("destpos: %d, %d\n",destpos[0],destpos[1]);
 	return manySteps(destpos[0]-positions[0], destpos[1]-positions[1],delay);
 }
+
+void coord2angles(float *coord, float *angles)
+{
+	coord[0] *= AREA_SIDE;
+	coord[1] *= AREA_SIDE;
+
+	float absy = (coord[1]+TOP_POS);
+	float dx = coord[0]-AREA_CENTER;
+	float adx = dx < 0 ? -dx : dx;
+	float v = sqrtf(powf(absy,2) + powf(dx,2));
+	float alpha = atanf(adx/absy);
+	float beta = acosf((v/2)/HANDLEN);
+	float gamma = (M_PI/2) + ((dx > 0) ? -alpha : alpha);
+
+	//printf("absy: %.3f; v: %.3f; A: %.3f; B: %.3f; G: %.3f\n", absy, v, alpha*RAD, beta*RAD, gamma*RAD);
+	angles[0] = (gamma-beta)*RAD;
+	angles[1] = (M_PI-gamma-beta)*RAD;
+}
+
+int moveToPoint(float *coord, int delay)
+{
+	float angles[2];
+	coord2angles(coord,angles);
+	moveToAngle(angles[0],angles[2],delay);
+}
+
 
 void penUp()
 {
