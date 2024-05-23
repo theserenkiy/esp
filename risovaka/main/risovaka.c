@@ -148,7 +148,6 @@ int manyStepsArr(int* steps,int delay)
 				if(dirs[m] < 0 && !gpio_get_level(motor_buttons[m]))
 					return m+1;	
 			}
-			
 		}
 		// printf("done: %d, %d\n",done[0],done[1]);
 		// printf("fpos: %.3f, %.3f\n",fpos[0],fpos[1]);
