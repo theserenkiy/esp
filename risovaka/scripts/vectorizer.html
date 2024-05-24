@@ -6,6 +6,17 @@
 	<title>Vectorizer</title>
 
 <script>
+const cl = console.log;
+
+let idata_t, idata_s, sgs = [];
+
+function putPixel(i)
+{
+	idata_t.data[i*4] = 255;//sgs[i];
+	idata_t.data[i*4+1] = 0;//sgs[i];
+	idata_t.data[i*4+2] = 0;//sgs[i];
+	idata_t.data[i*4+3] = 255;
+}
 
 window.onload = async () => {
 	sctx = document.getElementById('source').getContext('2d');
@@ -20,24 +31,29 @@ window.onload = async () => {
 	
 	sctx.drawImage(im,0,0);
 
-	let idata_s = sctx.getImageData(0,0,320,240);
-	let idata_t = tctx.getImageData(0,0,320,240);
+	idata_s = sctx.getImageData(0,0,320,240);
+	idata_t = tctx.getImageData(0,0,320,240);
 
 	let sdata = idata_s.data;
-	let sgs = []
 	for(let i=0; i < sdata.length; i+=4)
 	{
 		sgs.push((sdata[i]+sdata[i+1]+sdata[i+1])/3);
 	}
 
+	cl(sgs)
+
+	let avga = [127,127,127,127,127,127,127,127];
+	let avgp = 0;
 	for(let i=0; i < sgs.length; i++)
 	{
-		idata_t.data[i*4] = 100;
-		// idata_t.data[i*4+1] = 0;
-		// idata_t.data[i*4+2] = 0;
-		// idata_t.data[i*4+2] = 100;
+		avg = avga.reduce((a,v)=> a+v,0)/8;
+		avga[(avgp++)%8] = sgs[i];
+
+		if(Math.abs(sgs[i]-avg) > 10)
+			putPixel(i);
 	}
 
+	//cl(idata_t.data)
 	tctx.putImageData(idata_t,0,0);
 }
 
