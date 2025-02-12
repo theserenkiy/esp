@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Vectorizer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vectorizer</title>
 
 <script>
 const cl = console.log;
@@ -39,7 +39,7 @@ function xy2i(x,y)
 
 function mkVector(i0,white,dir)
 {
-	cl(`mkVector ${i0}, ${white}, ${dir}`)
+	cl(`mkVector ${i0}, ${white}, ${dir}`);
 	let [x0,y0] = i2xy(i0);
 	cl(`x0 ${x0}, y0 ${y0}`);
 	let x = x0,y = y0;
@@ -81,7 +81,7 @@ function mkVector(i0,white,dir)
 function findVector(i,white)
 {
 	let lastlen = 0, res=null;
-	for(let angn=0; angn < ANGS; angn++)//Math.PI*2; ang += Math.PI/16)
+	for(let angn=0; angn < ANGS; angn++)	//Math.PI*2; ang += Math.PI/16)
 	{
 		let ang = angn*ANGSTEP;
 		res = mkVector(i,white,[Math.cos(ang), Math.sin(ang)]);
@@ -97,7 +97,7 @@ function findVector(i,white)
 		//stats.push(res);
 	}
 
-	///let lastlen = 0;
+	// let lastlen = 0;
 	// for(let ang=1; ang < 32; ang++)
 	// {
 	// 	if(Math.abs(stats[ang][2]-stats[ang-1][2]) < 3)
@@ -126,13 +126,12 @@ window.onload = async () => {
 	sctx = document.getElementById('source').getContext('2d');
 	tctx = document.getElementById('target').getContext('2d');
 	let im = new Image();
-	
 
 	await new Promise(s => {
 		im.onload = s;
 		im.src = "/vect.png";
 	})
-	
+
 	sctx.drawImage(im,0,0);
 
 	idata_s = sctx.getImageData(0,0,W,H);
