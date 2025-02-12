@@ -48,15 +48,18 @@ uint8_t display_init[][2] = {
 
 uint8_t image[NDISP*8];
 
-void tx(spi_device_handle_t spi, uint8_t *buf, int nbits)
+spi_device_handle_t spi;
+
+void spi_tx(uint8_t *buf, int nbits)
 {
 	esp_err_t ret;
 	spi_transaction_t t;
 	memset(&t, 0, sizeof(t));
 	//memset(&t, 0, sizeof(t));     //Zero out the transaction
 	t.length=nbits;                    //Len is in bytes, transaction length is in bits.
-	t.tx_buffer = buf;               //Data
-	t.user=(void*)0;                //D/C needs to be set to 1
+	t.tx_buffer = buf;
+	t.rx_buffer = NULL;
+	t.user=(void*)0;
 	ret=spi_device_polling_transmit(spi, &t);  //Transmit!
 	assert(ret==ESP_OK);            //Should have had no issues.
 }
@@ -111,7 +114,8 @@ void init_display()
 			data[j*2]	= display_init[i][0];
 			data[j*2+1] = display_init[i][1];
 		}
-		bitbang_tx(data,NDISP*2*8);
+		//bitbang_tx(data,NDISP*2*8);
+		spi_tx(data,NDISP*2*8);
 	}
 }
 
@@ -125,13 +129,12 @@ void send_image()
 			data[j*2] = i+1;
 			data[j*2+1] = image[j*8+i];
 		}
-		bitbang_tx(data,NDISP*2*8);
+		spi_tx(data,NDISP*2*8);
 	}
 }
 
 void show_number(int num)
 {
-	int digs[NDISP];
 	int dig;
 	int start;
 	for(int i=0; i < NDISP;i++)
@@ -139,13 +142,13 @@ void show_number(int num)
 		dig = num%10;
 		num /= 10;
 		start = (NDISP-i-1)*8;
-		printf("%d   %d\n",dig,start);
+		//printf("%d   %d\n",dig,start);
 		for(int j=0; j < 8; j++)
 		{
 			image[start+j] = digits[dig][j];
 		}
 	}
-	printf("\n");
+	//printf("\n");
 	send_image();
 }
 
@@ -155,17 +158,16 @@ void app_main(void)
 	//return;
 
 	esp_err_t ret;
-	spi_device_handle_t spi;
 	spi_bus_config_t buscfg = {
 		.miso_io_num=PIN_MISO,
 		.mosi_io_num=PIN_MOSI,
 		.sclk_io_num=PIN_CLK,
 		.quadwp_io_num=-1,
 		.quadhd_io_num=-1,
-		.max_transfer_sz= 16*32
+		.max_transfer_sz= NDISP*2
 	};
 	spi_device_interface_config_t devcfg = {
-		.clock_speed_hz=1000,
+		.clock_speed_hz=10000000,
 		.mode=0,                                //SPI mode 0
 		.spics_io_num=PIN_CS,					//CS pin
 		.queue_size=7,                          //We want to be able to queue 7 transactions at a time
@@ -185,22 +187,15 @@ void app_main(void)
 	//int freq = spi->real_clk_freq_hz;
 	//printf("SPI clk= %d\n", freq);
 
-	//uint8_t digits[][] = {{}}
+	//bitbang_spi_setup();
 
-	bitbang_spi_setup();
-
-	for(int i=0;i < NDISP*8;i++)
-	{
-		image[i] = ((uint8_t *)digits)[i];
-	}
-	
 	int cnt = 0;
 	while(1){
 		init_display();
 		//send_image();
 		show_number(cnt);
 		cnt++;
-		vTaskDelay(1000/portTICK_PERIOD_MS);
+		vTaskDelay(100/portTICK_PERIOD_MS);
 	}
 	
 	
