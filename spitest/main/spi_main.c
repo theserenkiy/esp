@@ -155,7 +155,6 @@ void show_number(int num)
 void app_main(void)
 {
 	printf("Entering main\n");
-	//return;
 
 	esp_err_t ret;
 	spi_bus_config_t buscfg = {

@@ -42,10 +42,12 @@ void spi_tx(uint8_t *buf, int nbits)
 	memset(&t, 0, sizeof(t));
 	//memset(&t, 0, sizeof(t));     //Zero out the transaction
 	t.length=nbits;                    //Len is in bytes, transaction length is in bits.
+	t.addr=-1;
+	t.cmd=-1;
 	t.tx_buffer = buf;
 	t.rx_buffer = NULL;
 	t.user=(void*)0;
-	t.flags = (SPI_TRANS_MODE_QIO);
+	t.flags = (SPI_TRANS_MODE_OCT);
 	ret=spi_device_polling_transmit(spi, &t);  //Transmit!
 	assert(ret==ESP_OK);            //Should have had no issues.
 }
@@ -74,56 +76,68 @@ void app_main(void)
 
 	esp_err_t ret;
 	spi_bus_config_t buscfg = {
-		.mosi_io_num=PIN_R1,
-		.miso_io_num=PIN_G1,
-		.quadwp_io_num=PIN_B1,
-		.quadhd_io_num=PIN_R2,
-		// .data0_io_num=PIN_R1,
-		// .data1_io_num=PIN_G1,
-		// .data2_io_num=PIN_B1,
-		// .data3_io_num=PIN_R2,
-		.data4_io_num=PIN_G2,
-		.data5_io_num=PIN_B2,
-		.data6_io_num=0,
-		.data7_io_num=1,
-		.sclk_io_num=PIN_CLK,
+		// .mosi_io_num=PIN_R1,
+		// .miso_io_num=PIN_G1,
+		// .quadwp_io_num=PIN_B1,
+		// .quadhd_io_num=PIN_R2,
+		// .mosi_io_num=26,
+		// .miso_io_num=25,
+		// .quadwp_io_num=33,
+		// .quadhd_io_num=32,
+		.data0_io_num=26,
+		.data1_io_num=25,
+		.data2_io_num=33,
+		.data3_io_num=32,
+		// .data4_io_num=PIN_G2,
+		// .data5_io_num=PIN_B2,
+		.data4_io_num=21,
+		.data5_io_num=22,
+		.data6_io_num=23,
+		.data7_io_num=19,
+		//.sclk_io_num=PIN_CLK,
+		.sclk_io_num=2,
 		.max_transfer_sz=4092,
-		.flags=(SPICOMMON_BUSFLAG_MASTER | SPICOMMON_BUSFLAG_QUAD)
+		//.flags=(SPICOMMON_BUSFLAG_MASTER)
 	};
 	spi_device_interface_config_t devcfg = {
-		.clock_speed_hz=1000000,
-		.mode=0,                                //SPI mode 0
+		.clock_speed_hz=4,
+		.mode=2,                                //SPI mode 0
 		.spics_io_num=-1,					//CS pin
-		.queue_size=7,                          //We want to be able to queue 7 transactions at a time
+		.queue_size=1,                          //We want to be able to queue 7 transactions at a time
 		.flags = SPI_DEVICE_HALFDUPLEX
 		//.pre_cb=lcd_spi_pre_transfer_callback,//Specify pre-transfer callback to handle D/C line
 	};
 	//Initialize the SPI busz
 	printf("Init SPI bus\n");
-	ret=spi_bus_initialize(HSPI_HOST, &buscfg, SPI_DMA_CH_AUTO);
+	ret=spi_bus_initialize(SPI3_HOST, &buscfg, SPI_DMA_CH_AUTO);
 	printf("ret=%d\n", ret);
 	ESP_ERROR_CHECK(ret);
 	//Attach the LCD to the SPI bus
 	printf("Add SPI device\n");
-	ret=spi_bus_add_device(HSPI_HOST, &devcfg, &spi);
+	ret=spi_bus_add_device(SPI3_HOST, &devcfg, &spi);
 	printf("ret=%d\n", ret);
 	ESP_ERROR_CHECK(ret);
 
+	uint8_t data[] = {
+		0b01100110,0b01100110,0b01100110,0b01100110,0b01100110,0b01100110,0b01100110,0b01100110,
+		0b10011001,0b10011001,0b10011001,0b10011001,0b10011001,0b10011001,0b10011001,0b10011001
+	};
 	uint8_t buf[64];
 
-	for(int i=0; i < 64; i++)
+	for(int i=0; i < 16; i++)
 	{
-		buf[i] = i;//(row[i*3] >> 7) | ((row[i*3+1] & 0x80) >> 6) | ((row[i*3+2] & 0x80) >> 5);
+		buf[i] = data[i%16];//(row[i*3] >> 7) | ((row[i*3+1] & 0x80) >> 6) | ((row[i*3+2] & 0x80) >> 5);
 	}
 
 	while(1){
-		for(int i=0; i < 16; i++)
-		{
-			spi_tx(buf,64);
-			setLineAddr(i);
-		}
+		// for(int i=0; i < 16; i++)
+		// {
+			
+		// 	//setLineAddr(i);
+		// }
+		spi_tx(buf,64);
 		gpio_set_level(PIN_OE,1);
-		vTaskDelay(10/portTICK_PERIOD_MS);
+		vTaskDelay(100/portTICK_PERIOD_MS);
 	}
 	
 }
