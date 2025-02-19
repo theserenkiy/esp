@@ -49,6 +49,20 @@ spi_device_handle_t spi0, spi1;
 
 uint8_t row[] = {0xff,0x21,0x0c,0xff,0x21,0x0c,0xfd,0x30,0x0c,0xfd,0x30,0x0c,0xfd,0x30,0x0c,0xff,0x42,0x0b,0xff,0x42,0x0b,0xff,0x57,0x0a,0xff,0x57,0x0a,0xfd,0x6f,0x07,0xfd,0x6f,0x07,0xff,0x85,0x03,0xff,0x85,0x03,0xff,0x85,0x03,0xff,0x9e,0x02,0xff,0x9e,0x02,0xfc,0xb2,0x04,0xfc,0xb2,0x04,0xec,0xc4,0x0b,0xec,0xc4,0x0b,0xec,0xc4,0x0b,0xd7,0xd3,0x16,0xd7,0xd3,0x16,0xb9,0xde,0x24,0xb9,0xde,0x24,0x93,0xe5,0x35,0x93,0xe5,0x35,0x60,0xea,0x49,0x60,0xea,0x49,0x60,0xea,0x49,0x02,0xeb,0x5f,0x02,0xeb,0x5f,0x00,0xe9,0x77,0x00,0xe9,0x77,0x00,0xe3,0x91,0x00,0xe3,0x91,0x00,0xe3,0x91,0x00,0xd9,0xaa,0x00,0xd9,0xaa,0x00,0xca,0xc0,0x00,0xca,0xc0,0x00,0xb6,0xd2,0x00,0xb6,0xd2,0x01,0xa0,0xdf,0x01,0xa0,0xdf,0x01,0xa0,0xdf,0x00,0x86,0xe7,0x00,0x86,0xe7,0x11,0x6e,0xe9,0x11,0x6e,0xe9,0x4b,0x58,0xe8,0x4b,0x58,0xe8,0x4b,0x58,0xe8,0x67,0x44,0xe2,0x67,0x44,0xe2,0x80,0x36,0xdf,0x80,0x36,0xdf,0x95,0x2b,0xd9,0x95,0x2b,0xd9,0xa7,0x24,0xd2,0xa7,0x24,0xd2,0xa7,0x24,0xd2,0xb6,0x20,0xcf,0xb6,0x20,0xcf};
 
+typedef struct {
+    uint64_t event_count;
+} example_queue_element_t;
+
+static bool example_timer_on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx)
+{
+    BaseType_t high_task_awoken = pdFALSE;
+    gptimer_stop(timer);
+	gpio_set_level(PIN_OE,1);
+    return high_task_awoken == pdTRUE;
+}
+
+
+
 void spi_tx(uint8_t *buf, int nbits)
 {
 	esp_err_t ret;
@@ -62,9 +76,10 @@ void spi_tx(uint8_t *buf, int nbits)
 	t.rx_buffer = NULL;
 	t.user=(void*)0;
 	t.flags = (SPI_TRANS_MODE_QIO);
+	spi_transaction_t * pt = &t;
 	spi_device_queue_trans(spi0, &t, portMAX_DELAY);
 	spi_device_queue_trans(spi1, &t, portMAX_DELAY);
-	spi_device_get_trans_result(spi0, &t, portMAX_DELAY);
+	spi_device_get_trans_result(spi0, &pt, portMAX_DELAY);
 	usleep(100);
 	// ret=spi_device_polling_transmit(spi, &t);  //Transmit!
 	// assert(ret==ESP_OK);            //Should have had no issues.
@@ -151,6 +166,41 @@ void bb_tx(uint8_t * buf)
 	}
 }
 
+void bb_tx_truecolor(uint8_t* row, int rownum, int bit)
+{
+	int pix[3], pixl[3];
+	float k = rownum/32.0;
+	float kl = (rownum+16)/32.0;
+	for(int i=0; i < 64*3; i+=3)
+	{
+		pix[0] =  gamma[(int)(row[i]*k)];
+		pix[1] =  gamma[(int)(row[i+1]*k)];
+		pix[2] =  gamma[(int)(row[i+2]*k)];
+		pixl[0] = gamma[(int)(row[i]*kl)];
+		pixl[1] = gamma[(int)(row[i+1]*kl)];
+		pixl[2] = gamma[(int)(row[i+2]*kl)];
+		GPIO.out_w1ts = (
+			REMAP_BIT(pix[0],bit,PIN_R1) |
+			REMAP_BIT(pixl[0],bit,PIN_R2) |
+			REMAP_BIT(pix[1],bit,PIN_G1) |
+			REMAP_BIT(pixl[1],bit,PIN_G2) |
+			REMAP_BIT(pix[2],bit,PIN_B1) |
+			REMAP_BIT(pixl[2],bit,PIN_B2) 
+		);
+
+		GPIO.out_w1tc = (
+			REMAP_BIT_N(pix[0],bit,PIN_R1) |
+			REMAP_BIT_N(pixl[0],bit,PIN_R2) |
+			REMAP_BIT_N(pix[1],bit,PIN_G1) |
+			REMAP_BIT_N(pixl[1],bit,PIN_G2) |
+			REMAP_BIT_N(pix[2],bit,PIN_B1) |
+			REMAP_BIT_N(pixl[2],bit,PIN_B2) 
+		);
+		gpio_set_level(PIN_CLK,1);
+		gpio_set_level(PIN_CLK,0);
+	}
+}
+
 void setLineAddr(int addr)
 {
 	gpio_set_level(PIN_OE,1);
@@ -169,7 +219,7 @@ void setLineAddr(int addr)
 	);
 	gpio_set_level(PIN_LAT,1);
 	gpio_set_level(PIN_LAT,0);
-	gpio_set_level(PIN_OE,0);
+	
 }
 
 void app_main(void)
@@ -185,22 +235,22 @@ void app_main(void)
 	gptimer_config_t timer_config = {
 		.clk_src = GPTIMER_CLK_SRC_DEFAULT,
 		.direction = GPTIMER_COUNT_UP,
-		.resolution_hz = 40 * 1000 * 1000, // 1 tick = 25ns
+		.resolution_hz = 30 * 1000 * 1000, // 1 tick = 25ns
 	};
 	ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &gptimer));
 
-	// gptimer_alarm_config_t alarm_config = {
-	// 	.alarm_count = 10
-	// };
-	// gptimer_set_alarm_action(gptimer, &alarm_config);
-
-	// gptimer_event_callbacks_t cbs = {
-	// 	.on_alarm = example_timer_on_alarm_cb, // register user callback
-	// };
-	// gptimer_register_event_callbacks(gptimer, &cbs, queue);
+	gptimer_alarm_config_t alarm_config = {
+		.alarm_count = 100, // initial alarm target = 1s @resolution 1MHz
+	};
+	ESP_ERROR_CHECK(gptimer_set_alarm_action(gptimer, &alarm_config));
+	
+	gptimer_event_callbacks_t cbs = {
+		.on_alarm = example_timer_on_alarm_cb, // register user callback
+	};
+	ESP_ERROR_CHECK(gptimer_register_event_callbacks(gptimer, &cbs, NULL));
 
 	gptimer_enable(gptimer);
-	gptimer_start(gptimer);
+	
 	//spi_init(&spi0, SPI2_HOST, PIN_R1, PIN_G1, PIN_B1, PIN_CLK);
 	//spi_init(&spi1, SPI3_HOST, PIN_R2, PIN_G2, PIN_B2, -1);
 
@@ -209,11 +259,20 @@ void app_main(void)
 	};
 	uint8_t buf[64];
 
-	for(int i=0; i < 32; i++)
+	// for(int i=0; i < 32; i++)
+	// {
+	// 	buf[i] = (
+	// 		REMAP_BIT(row[i*6],)
+	// 	);//data[i%4];
+	// 			// ((row[i*6] & 0x80) >> 3) | ((row[i*6+1] & 0x80) >> 2) | ((row[i*6+2] & 0x80) >> 1) 
+	// 			// | ((row[i*6+3] & 0x80) >> 7) | ((row[i*6+4] & 0x80) >> 6) | ((row[i*6+5] & 0x80) >> 5);
+	// }
+
+	gptimer_alarm_config_t aconfs[12];
+
+	for(int i=0; i < 12; i++)
 	{
-		buf[i] = data[i%4];
-				// ((row[i*6] & 0x80) >> 3) | ((row[i*6+1] & 0x80) >> 2) | ((row[i*6+2] & 0x80) >> 1) 
-				// | ((row[i*6+3] & 0x80) >> 7) | ((row[i*6+4] & 0x80) >> 6) | ((row[i*6+5] & 0x80) >> 5);
+		aconfs[i].alarm_count = 1 << i;
 	}
 
 	uint64_t count;
@@ -223,21 +282,26 @@ void app_main(void)
 		{
 			for(int j=0; j < 12; j++)
 			{
-				if(!count)
-					gptimer_set_raw_count(gptimer,0);
-				bb_tx(buf);
-				if(!count)	
-					gptimer_get_raw_count(gptimer, &count);
+				// if(!count)
+				// 	gptimer_set_raw_count(gptimer,0);
+				
+				bb_tx_truecolor(row,i,j);
+				// if(!count)	
+				// 	gptimer_get_raw_count(gptimer, &count);
 				setLineAddr(i);
+				gptimer_set_raw_count(gptimer,0);
+				gptimer_set_alarm_action(gptimer, &aconfs[j]);
+				gpio_set_level(PIN_OE,0);
+				gptimer_start(gptimer);
 			}			
 		}
-		if(!measured)
-		{
-			printf("Timer: %lld\n",count);
-			measured = 1;
-		}
+		// if(!measured)
+		// {
+		// 	printf("Timer: %lld\n",count);
+		// 	measured = 1;
+		// }
 			
-		gpio_set_level(PIN_OE,1);
+		//gpio_set_level(PIN_OE,1);
 		//vTaskDelay(10/portTICK_PERIOD_MS);
 	}
 	

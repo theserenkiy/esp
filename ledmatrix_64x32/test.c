@@ -7,6 +7,13 @@
 
 int main()
 {
-	printf("%x\n",REMAP_BIT(7,2,2));
-	printf("%x\n",REMAP_BIT_N(7,3,3));
+	// printf("%x\n",REMAP_BIT(7,2,2));
+	// printf("%x\n",REMAP_BIT_N(7,3,3));
+
+	int a = 123;
+	int b = 5;
+	float k = b / 10.0;
+	printf("%.3f\n",k);
+	a = (int)((float)a * k);
+	printf("%d\n",a);
 }
