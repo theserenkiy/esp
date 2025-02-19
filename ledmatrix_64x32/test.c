@@ -7,6 +7,20 @@
 
 int main()
 {
-	printf("%x\n",REMAP_BIT(7,2,2));
-	printf("%x\n",REMAP_BIT_N(7,3,3));
+	// printf("%x\n",REMAP_BIT(7,2,2));
+	// printf("%x\n",REMAP_BIT_N(7,3,3));
+
+	char* str = "Preved";
+	for(int i=0; ;i++)
+	{
+		if(str[i]==0)break;
+		printf("Char: %c; ASCII: %d\n",str[i],str[i]);
+	}
+
+	int a = 123;
+	int b = 5;
+	float k = b / 10.0;
+	printf("%.3f\n",k);
+	a = (int)((float)a * k);
+	printf("%d\n",a);
 }

@@ -62,6 +62,20 @@ uint8_t row[] = {
 	0xd9,0xa7,0x24,0xd2,0xa7,0x24,0xd2,0xa7,0x24,0xd2,0xb6,0x20,0xcf,0xb6,0x20,0xcf
 };
 
+typedef struct {
+    uint64_t event_count;
+} example_queue_element_t;
+
+static bool example_timer_on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx)
+{
+    BaseType_t high_task_awoken = pdFALSE;
+    gptimer_stop(timer);
+	gpio_set_level(PIN_OE,1);
+    return high_task_awoken == pdTRUE;
+}
+
+
+
 void spi_tx(uint8_t *buf, int nbits)
 {
 	esp_err_t ret;
@@ -75,9 +89,10 @@ void spi_tx(uint8_t *buf, int nbits)
 	t.rx_buffer = NULL;
 	t.user=(void*)0;
 	t.flags = (SPI_TRANS_MODE_QIO);
+	spi_transaction_t * pt = &t;
 	spi_device_queue_trans(spi0, &t, portMAX_DELAY);
 	spi_device_queue_trans(spi1, &t, portMAX_DELAY);
-	spi_device_get_trans_result(spi0, &t, portMAX_DELAY);
+	spi_device_get_trans_result(spi0, &pt, portMAX_DELAY);
 	usleep(100);
 	// ret=spi_device_polling_transmit(spi, &t);  //Transmit!
 	// assert(ret==ESP_OK);            //Should have had no issues.
@@ -164,6 +179,135 @@ void bb_tx(uint8_t * buf)
 	}
 }
 
+void bb_tx_truecolor(uint8_t* row, int rownum, int bit)
+{
+	int pix[3], pixl[3];
+	float k = rownum/32.0;
+	float kl = (rownum+16)/32.0;
+	for(int i=0; i < 64*3; i+=3)
+	{
+		pix[0] =  gamma[(int)(row[i]*k)];
+		pix[1] =  gamma[(int)(row[i+1]*k)];
+		pix[2] =  gamma[(int)(row[i+2]*k)];
+		pixl[0] = gamma[(int)(row[i]*kl)];
+		pixl[1] = gamma[(int)(row[i+1]*kl)];
+		pixl[2] = gamma[(int)(row[i+2]*kl)];
+		GPIO.out_w1ts = (
+			REMAP_BIT(pix[0],bit,PIN_R1) |
+			REMAP_BIT(pixl[0],bit,PIN_R2) |
+			REMAP_BIT(pix[1],bit,PIN_G1) |
+			REMAP_BIT(pixl[1],bit,PIN_G2) |
+			REMAP_BIT(pix[2],bit,PIN_B1) |
+			REMAP_BIT(pixl[2],bit,PIN_B2) 
+		);
+
+		GPIO.out_w1tc = (
+			REMAP_BIT_N(pix[0],bit,PIN_R1) |
+			REMAP_BIT_N(pixl[0],bit,PIN_R2) |
+			REMAP_BIT_N(pix[1],bit,PIN_G1) |
+			REMAP_BIT_N(pixl[1],bit,PIN_G2) |
+			REMAP_BIT_N(pix[2],bit,PIN_B1) |
+			REMAP_BIT_N(pixl[2],bit,PIN_B2) 
+		);
+		gpio_set_level(PIN_CLK,1);
+		gpio_set_level(PIN_CLK,0);
+	}
+}
+
+#define HALFSCR_PIX 64*16
+#define HALFSCR_SUBPIX	HALFSCR_PIX*3
+typedef struct {
+	uint16_t R1;
+	uint16_t G1;
+	uint16_t B1;
+	uint16_t R2;
+	uint16_t G2;
+	uint16_t B2;
+} pixel_t;
+
+void prepare_image(uint8_t *image, pixel_t *out)
+{
+	int p, p2;
+	for(int i=0; i < HALFSCR_PIX; i++)
+	{
+		p = i*3;
+		p2 = p + HALFSCR_SUBPIX;
+
+		out[i].R1 = gamma[image[p]];
+		out[i].G1 = gamma[image[p+1]];
+		out[i].B1 = gamma[image[p+2]];
+		out[i].R2 = gamma[image[p2]];
+		out[i].G2 = gamma[image[p2+1]];
+		out[i].B2 = gamma[image[p2+2]];
+	}
+}
+
+void bb_tx_frame(uint8_t* image, gptimer_handle_t* timer)
+{
+	gptimer_alarm_config_t aconfs[12];
+	for(int i=0; i < 12; i++)
+	{
+		aconfs[i].alarm_count = 1 << i;
+	}
+
+	pixel_t im[HALFSCR_PIX];
+	prepare_image(image,im);
+
+	gpio_set_level(PIN_OE,1);
+
+	int rowstart;
+	pixel_t* pix;
+	for(int rownum=0; rownum < 64; rownum ++)
+	{
+		rowstart = rownum*64;
+
+		for(int bit=0; bit < 12; bit++)
+		{
+			for(int pixnum=rowstart; pixnum < rowstart+64; pixnum++)
+			{
+				pix = &im[pixnum];
+				GPIO.out_w1ts = (
+					REMAP_BIT(pix->R1,bit,PIN_R1) |
+					REMAP_BIT(pix->R2,bit,PIN_R2) |
+					REMAP_BIT(pix->G1,bit,PIN_G1) |
+					REMAP_BIT(pix->G2,bit,PIN_G2) |
+					REMAP_BIT(pix->B1,bit,PIN_B1) |
+					REMAP_BIT(pix->B2,bit,PIN_B2)
+				);
+				GPIO.out_w1ts = (
+					REMAP_BIT_N(pix->R1,bit,PIN_R1) |
+					REMAP_BIT_N(pix->R2,bit,PIN_R2) |
+					REMAP_BIT_N(pix->G1,bit,PIN_G1) |
+					REMAP_BIT_N(pix->G2,bit,PIN_G2) |
+					REMAP_BIT_N(pix->B1,bit,PIN_B1) |
+					REMAP_BIT_N(pix->B2,bit,PIN_B2)
+				);
+				gpio_set_level(PIN_CLK,1);
+				gpio_set_level(PIN_CLK,0);
+			}
+			
+			GPIO.out_w1ts = (
+				REMAP_BIT(rownum,3,PIN_D) |
+				REMAP_BIT(rownum,2,PIN_C) |
+				REMAP_BIT(rownum,1,PIN_B) |
+				REMAP_BIT(rownum,0,PIN_A)
+			);
+			GPIO.out_w1tc = (
+				REMAP_BIT_N(rownum,3,PIN_D) |
+				REMAP_BIT_N(rownum,2,PIN_C) |
+				REMAP_BIT_N(rownum,1,PIN_B) |
+				REMAP_BIT_N(rownum,0,PIN_A)
+			);
+			gpio_set_level(PIN_LAT,1);
+			gpio_set_level(PIN_LAT,0);
+		}
+		gptimer_set_raw_count(timer,0);
+		gptimer_set_alarm_action(timer, &aconfs[j]);
+		gpio_set_level(PIN_OE,0);
+		gptimer_start(timer);
+	}
+}
+
 void setLineAddr(int addr)
 {
 	gpio_set_level(PIN_OE,1);
@@ -173,7 +317,6 @@ void setLineAddr(int addr)
 		REMAP_BIT(addr,1,PIN_B) |
 		REMAP_BIT(addr,0,PIN_A)
 	);
-
 	GPIO.out_w1tc = (
 		REMAP_BIT_N(addr,3,PIN_D) |
 		REMAP_BIT_N(addr,2,PIN_C) |
@@ -182,7 +325,6 @@ void setLineAddr(int addr)
 	);
 	gpio_set_level(PIN_LAT,1);
 	gpio_set_level(PIN_LAT,0);
-	gpio_set_level(PIN_OE,0);
 }
 
 void app_main(void)
@@ -198,60 +340,24 @@ void app_main(void)
 	gptimer_config_t timer_config = {
 		.clk_src = GPTIMER_CLK_SRC_DEFAULT,
 		.direction = GPTIMER_COUNT_UP,
-		.resolution_hz = 40 * 1000 * 1000, // 1 tick = 25ns
+		.resolution_hz = 30 * 1000 * 1000, // 1 tick = 25ns
 	};
 	ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &gptimer));
 
-	// gptimer_alarm_config_t alarm_config = {
-	// 	.alarm_count = 10
-	// };
-	// gptimer_set_alarm_action(gptimer, &alarm_config);
-
-	// gptimer_event_callbacks_t cbs = {
-	// 	.on_alarm = example_timer_on_alarm_cb, // register user callback
-	// };
-	// gptimer_register_event_callbacks(gptimer, &cbs, queue);
+	gptimer_alarm_config_t alarm_config = {
+		.alarm_count = 100, // initial alarm target = 1s @resolution 1MHz
+	};
+	ESP_ERROR_CHECK(gptimer_set_alarm_action(gptimer, &alarm_config));
+	
+	gptimer_event_callbacks_t cbs = {
+		.on_alarm = example_timer_on_alarm_cb, // register user callback
+	};
+	ESP_ERROR_CHECK(gptimer_register_event_callbacks(gptimer, &cbs, NULL));
 
 	gptimer_enable(gptimer);
-	gptimer_start(gptimer);
-	//spi_init(&spi0, SPI2_HOST, PIN_R1, PIN_G1, PIN_B1, PIN_CLK);
-	//spi_init(&spi1, SPI3_HOST, PIN_R2, PIN_G2, PIN_B2, -1);
 
-	uint8_t data[] = {
-		0b00010011, 0b00100110, 0b01000101, 0b01110000
-	};
 	uint8_t buf[64];
-
-	for(int i=0; i < 32; i++)
-	{
-		buf[i] = data[i%4];
-				// ((row[i*6] & 0x80) >> 3) | ((row[i*6+1] & 0x80) >> 2) | ((row[i*6+2] & 0x80) >> 1) 
-				// | ((row[i*6+3] & 0x80) >> 7) | ((row[i*6+4] & 0x80) >> 6) | ((row[i*6+5] & 0x80) >> 5);
-	}
-
-	uint64_t count;
-	int measured = 0;
 	while(1){
-		for(int i=0; i < 16; i++)
-		{
-			for(int j=0; j < 12; j++)
-			{
-				if(!count)
-					gptimer_set_raw_count(gptimer,0);
-				bb_tx(buf);
-				if(!count)	
-					gptimer_get_raw_count(gptimer, &count);
-				setLineAddr(i);
-			}			
-		}
-		if(!measured)
-		{
-			printf("Timer: %lld\n",count);
-			measured = 1;
-		}
-			
-		gpio_set_level(PIN_OE,1);
-		//vTaskDelay(10/portTICK_PERIOD_MS);
+		bb_tx_frame(image,&gptimer);		
 	}
-	
 }
