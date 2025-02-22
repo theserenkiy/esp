@@ -1,6 +1,7 @@
 {
 	"files.associations": {
 		"random": "c",
-		"ledc.h": "c"
+		"ledc.h": "c",
+		"gptimer.h": "c"
 	}
 }

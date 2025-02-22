@@ -154,55 +154,6 @@ void ledc_start(int hpoint)
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 }
 
-void bb_tx(uint8_t * buf)
-{
-
-	for(int i = 0; i < 32; i++)
-	{
-		GPIO.out_w1ts = (
-			REMAP_BIT(buf[i],4,PIN_R1) |
-			REMAP_BIT(buf[i],5,PIN_G1) |
-			REMAP_BIT(buf[i],6,PIN_B1) |
-			REMAP_BIT(buf[i],4,PIN_R2) |
-			REMAP_BIT(buf[i],5,PIN_G2) |
-			REMAP_BIT(buf[i],6,PIN_B2) 
-		);
-		GPIO.out_w1tc = (
-			REMAP_BIT_N(buf[i],4,PIN_R1) |
-			REMAP_BIT_N(buf[i],5,PIN_G1) |
-			REMAP_BIT_N(buf[i],6,PIN_B1) |
-			REMAP_BIT_N(buf[i],4,PIN_R2) |
-			REMAP_BIT_N(buf[i],5,PIN_G2) |
-			REMAP_BIT_N(buf[i],6,PIN_B2) 
-		);
-		gpio_set_level(PIN_CLK,1);
-		gpio_set_level(PIN_CLK,0);
-		// GPIO.out_w1tc = (
-		// 	1 << PIN_CLK
-		// );
-		GPIO.out_w1ts = (
-			REMAP_BIT(buf[i],0,PIN_R1) |
-			REMAP_BIT(buf[i],1,PIN_G1) |
-			REMAP_BIT(buf[i],2,PIN_B1) |
-			REMAP_BIT(buf[i],0,PIN_R2) |
-			REMAP_BIT(buf[i],1,PIN_G2) |
-			REMAP_BIT(buf[i],2,PIN_B2) 
-		);
-		GPIO.out_w1tc = (
-			REMAP_BIT_N(buf[i],0,PIN_R1) |
-			REMAP_BIT_N(buf[i],1,PIN_G1) |
-			REMAP_BIT_N(buf[i],2,PIN_B1) |
-			REMAP_BIT_N(buf[i],0,PIN_R2) |
-			REMAP_BIT_N(buf[i],1,PIN_G2) |
-			REMAP_BIT_N(buf[i],2,PIN_B2) 
-		);
-		gpio_set_level(PIN_CLK,1);
-		gpio_set_level(PIN_CLK,0);
-		// GPIO.out_w1tc = (
-		// 	1 << PIN_CLK
-		// );
-	}
-}
 
 #define HALFSCR_PIX 64*16
 #define HALFSCR_SUBPIX	HALFSCR_PIX*3
@@ -235,7 +186,7 @@ void prepare_image(uint8_t *image, pixel_t *out)
 	}
 }
 
-uint64_t bb_tx_frame(uint8_t* image)//, gptimer_handle_t timer)
+uint64_t bb_tx_frame(uint8_t* image, gptimer_handle_t timer)
 {
 	
 	for(int i=0; i < 12; i++)
@@ -257,11 +208,11 @@ uint64_t bb_tx_frame(uint8_t* image)//, gptimer_handle_t timer)
 		
 		for(int bit=0; bit < 12; bit++)
 		{
-			// if(!rowtime)
-			// {
-			// 	gptimer_start(timer);
-			// 	gptimer_set_raw_count(timer,0);
-			// }
+			if(!rowtime)
+			{
+				gptimer_start(timer);
+				gptimer_set_raw_count(timer,0);
+			}
 			
 			for(int pixnum=rowstart; pixnum < rowstart+64; pixnum++)
 			{
@@ -291,11 +242,11 @@ uint64_t bb_tx_frame(uint8_t* image)//, gptimer_handle_t timer)
 				}
 			}
 			
-			// if(!rowtime)
-			// {
-			// 	gptimer_get_raw_count(timer,&rowtime);
-			// 	gptimer_stop(timer);
-			// }
+			if(!rowtime)
+			{
+				gptimer_get_raw_count(timer,&rowtime);
+				gptimer_stop(timer);
+			}
 			// 
 			
 			//gpio_set_level(PIN_OE,1);
@@ -345,21 +296,22 @@ void timer_init(gptimer_handle_t gptimer)
 	gptimer_config_t timer_config = {
 		.clk_src = GPTIMER_CLK_SRC_DEFAULT,
 		.direction = GPTIMER_COUNT_UP,
-		.resolution_hz = 40 * 1000 * 1000, // 1 tick = 25ns
+		.resolution_hz = 1 * 1000 * 1000, // 1 tick = 25ns
 	};
 	gptimer_new_timer(&timer_config, &gptimer);
-
-	gptimer_alarm_config_t alarm_config = {
-		.alarm_count = 100, // initial alarm target = 1s @resolution 1MHz
-	};
-	gptimer_set_alarm_action(gptimer, &alarm_config);
-	
-	gptimer_event_callbacks_t cbs = {
-		.on_alarm = example_timer_on_alarm_cb, // register user callback
-	};
-	gptimer_register_event_callbacks(gptimer, &cbs, NULL);
-
 	gptimer_enable(gptimer);
+
+	// gptimer_alarm_config_t alarm_config = {
+	// 	.alarm_count = 100, // initial alarm target = 1s @resolution 1MHz
+	// };
+	// gptimer_set_alarm_action(gptimer, &alarm_config);
+	
+	// gptimer_event_callbacks_t cbs = {
+	// 	.on_alarm = example_timer_on_alarm_cb, // register user callback
+	// };
+	// gptimer_register_event_callbacks(gptimer, &cbs, NULL);
+
+	
 	//gptimer_start(gptimer);
 }
 
@@ -372,15 +324,29 @@ void app_main(void)
 		gpio_set_level(pins[i],0);
 	}
 
-	// gptimer_handle_t gptimer = NULL;
-	// timer_init(gptimer);
+	gptimer_handle_t gptimer = NULL;
+	//timer_init(gptimer);
+	// gptimer_config_t timer_config = {
+	// 	.clk_src = GPTIMER_CLK_SRC_DEFAULT,
+	// 	.direction = GPTIMER_COUNT_UP,
+	// 	.resolution_hz = 1 * 1000 * 1000, // 1 tick = 25ns
+	// };
+	// gptimer_new_timer(&timer_config, &gptimer);
+	// gptimer_enable(gptimer);
+	gptimer_config_t timer_config = {
+		.clk_src = GPTIMER_CLK_SRC_DEFAULT,
+		.direction = GPTIMER_COUNT_UP,
+		.resolution_hz = 1 * 1000 * 1000, // 1 tick = 25ns
+	};
+	gptimer_new_timer(&timer_config, &gptimer);
+	gptimer_enable(gptimer);
 	
 	ledc_init();
 
 	uint8_t buf[64];
 	while(1){
-		uint64_t rowtime = bb_tx_frame(image);//,gptimer);		
-		//printf("ROWTIME: %lld\n",rowtime);
-		//vTaskDelay(100/portTICK_PERIOD_MS);
+		uint64_t rowtime = bb_tx_frame(image,gptimer);		
+		printf("ROWTIME: %lld\n",rowtime);
+		vTaskDelay(100/portTICK_PERIOD_MS);
 	}
 }
