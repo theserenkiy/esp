@@ -1,5 +1,10 @@
 {
 	"files.associations": {
-		"random": "c"
+		"random": "c",
+		"atomic": "c",
+		"charconv": "c",
+		"complex": "c",
+		"type_traits": "c",
+		"xutility": "c"
 	}
 }
