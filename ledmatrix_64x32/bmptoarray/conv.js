@@ -1,7 +1,7 @@
 const bmp = require('bmp-js')
 const fs = require('fs')
 
-var bmpBuffer = fs.readFileSync('test.bmp');
+var bmpBuffer = fs.readFileSync('rainbow2.bmp');
 var bmpData = bmp.decode(bmpBuffer);
 
 let outdata = []
