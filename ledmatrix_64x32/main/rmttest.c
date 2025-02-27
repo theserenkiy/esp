@@ -52,18 +52,25 @@ void app_main()
     while(1)
     {
         //printf("Step %d\n",(int)step);
-        psym->level0 = 1;
-        psym->duration0 = 1000;
+        // psym->level0 = 1;
+        // psym->duration0 = 5000;
 
-        psym->level1 = 0;
-        psym->duration1 = 5000;
+        // psym->level1 = 0;
+        // psym->duration1 = 5000;
+
+        symbol.level0 = 1;
+        symbol.duration0 = 5000;
+        symbol.level1 = 0;
+        symbol.duration1 = 5000;
 
         printf("%d %d %d %d %d\n",(int)psym->level0,(int)psym->duration0,(int)psym->level1,(int)psym->duration1,(int)psym->val);
 
         //printf("%d  %d\n",payload[0],payload[1]);
-        rmt_transmit(tx_chan, encoder, psym, 4, &tx_conf);
+        rmt_transmit(tx_chan, encoder, &symbol, sizeof(symbol), &tx_conf);
         rmt_tx_wait_all_done(tx_chan,5000);
-
+        // printf("delay...\n");
+        // vTaskDelay(1000/portTICK_PERIOD_MS);
+        // printf("OK\n");
         // step+=100;
         // if(step > maxstep)
         // {

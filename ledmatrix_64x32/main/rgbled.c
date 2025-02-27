@@ -11,6 +11,7 @@
 #include "soc/gpio_struct.h"
 #include "driver/gptimer.h"
 #include "driver/ledc.h"
+#include "driver/rmt_tx.h"
 
 
 #include "image.c"
@@ -43,6 +44,22 @@
 // #define REMAP_BIT(v,s,d) REMAP_BIT_MASKED(MASK_BIT(v,s),s,d)
 // #define REMAP_BIT_N(v,s,d) REMAP_BIT_MASKED(MASK_BIT(v,s) ^ (1 << s),s,d)
 
+rmt_encoder_handle_t rmt_encoder;
+rmt_symbol_word_t rmt_symbol = {
+	.duration0 = 10000,
+	.level0 = 1,
+	.duration1 = 5000,
+	.level1 = 0,
+};
+
+rmt_transmit_config_t rmt_tx_conf = {
+	.loop_count = 0,
+	.flags.eot_level = 1,
+	.flags.queue_nonblocking = 1,
+};
+
+rmt_channel_handle_t rmt_tx_chan = NULL;
+
 int pins[] = {
 	PIN_A,PIN_B,PIN_C,PIN_D,PIN_LAT,PIN_OE,
 	PIN_R1,PIN_R2,PIN_B1,PIN_B2,PIN_G1,PIN_G2,PIN_CLK
@@ -73,8 +90,6 @@ static bool example_timer_on_alarm_cb(gptimer_handle_t timer, const gptimer_alar
     return high_task_awoken == pdTRUE;
 }
 
-
-
 void spi_tx(uint8_t *buf, int nbits)
 {
 	esp_err_t ret;
@@ -96,8 +111,6 @@ void spi_tx(uint8_t *buf, int nbits)
 	// ret=spi_device_polling_transmit(spi, &t);  //Transmit!
 	// assert(ret==ESP_OK);            //Should have had no issues.
 }
-
-
 
 void spi_init(spi_device_handle_t * spi, spi_host_device_t host, int d0, int d1, int d2, int clk)
 {
@@ -126,32 +139,6 @@ void spi_init(spi_device_handle_t * spi, spi_host_device_t host, int d0, int d1,
 	ESP_ERROR_CHECK(ret);
 	ret=spi_bus_add_device(host, &devcfg, spi);
 	ESP_ERROR_CHECK(ret);
-}
-
-void ledc_init()
-{
-	ledc_timer_config_t ledc_timer = {
-        .speed_mode       = LEDC_HIGH_SPEED_MODE,
-        .duty_resolution  = LEDC_TIMER_12_BIT,
-        .timer_num        = LEDC_TIMER_0,
-        .freq_hz          = 16000,
-        .clk_cfg          = LEDC_AUTO_CLK
-    };
-    ledc_timer_config(&ledc_timer);
-}
-
-void ledc_start(int hpoint)
-{
-	ledc_channel_config_t ledc_channel = {
-        .speed_mode     = LEDC_HIGH_SPEED_MODE,
-        .channel        = LEDC_CHANNEL_0,
-        .timer_sel      = LEDC_TIMER_0,
-        .intr_type      = LEDC_INTR_DISABLE,
-        .gpio_num       = PIN_OE,
-        .duty           = 4096-hpoint, // Set duty to 0%
-        .hpoint         = hpoint
-    };
-    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 }
 
 
@@ -201,7 +188,7 @@ uint64_t bb_tx_frame(uint8_t* image, gptimer_handle_t timer)
 	int rowstart;
 	pixel_t* pix;
 	uint64_t rowtime = 0;
-	int hpoint;
+	int ena_dur = 0;
 	for(int rownum=0; rownum < 16; rownum ++)
 	{
 		rowstart = rownum*64;
@@ -236,10 +223,7 @@ uint64_t bb_tx_frame(uint8_t* image, gptimer_handle_t timer)
 				gpio_set_level(PIN_CLK,1);
 				gpio_set_level(PIN_CLK,0);
 
-				if(pixnum == 32)
-				{
-					ledc_timer_pause(LEDC_HIGH_SPEED_MODE, LEDC_TIMER_0);
-				}
+				
 			}
 			
 			if(!rowtime)
@@ -266,10 +250,24 @@ uint64_t bb_tx_frame(uint8_t* image, gptimer_handle_t timer)
 					REMAP_BIT_N(rownum,0,PIN_A)
 				);
 			}
-			usleep(10);
+			//usleep(10);
 
 			gpio_set_level(PIN_LAT,1);
 			gpio_set_level(PIN_LAT,0);
+
+			//gpio_set_level(PIN_OE,0);
+
+			ena_dur = 2	 << (bit);
+
+			rmt_symbol.level0 = 0;
+			rmt_symbol.duration0 = ena_dur;
+			rmt_symbol.level1 = 1;
+			rmt_symbol.duration1 = 1000;
+
+			rmt_tx_wait_all_done(rmt_tx_chan,100);	
+			rmt_transmit(rmt_tx_chan, rmt_encoder, &rmt_symbol, sizeof(rmt_symbol), &rmt_tx_conf);
+        		
+			
 			
 			// gptimer_set_raw_count(timer,0);
 			// gptimer_set_alarm_action(timer, &aconfs[bit]);
@@ -277,11 +275,11 @@ uint64_t bb_tx_frame(uint8_t* image, gptimer_handle_t timer)
 			// gpio_set_level(PIN_OE,0);
 			
 			//gptimer_start(timer);
-			hpoint = 1 << bit;
-			ledc_timer_rst(LEDC_HIGH_SPEED_MODE, LEDC_TIMER_0);
-			ledc_timer_resume(LEDC_HIGH_SPEED_MODE, LEDC_TIMER_0);
-			ledc_stop(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, 0);
-			ledc_start(hpoint);	
+			// hpoint = 1 << bit;
+			// ledc_timer_rst(LEDC_HIGH_SPEED_MODE, LEDC_TIMER_0);
+			// ledc_timer_resume(LEDC_HIGH_SPEED_MODE, LEDC_TIMER_0);
+			// ledc_stop(LEDC_HIGH_SPEED_MODE, LEDC_CHANNEL_0, 0);
+			//ledc_start(hpoint);	
 		}
 	}
 
@@ -315,6 +313,33 @@ void timer_init(gptimer_handle_t gptimer)
 	//gptimer_start(gptimer);
 }
 
+void rmt_init()
+{
+	rmt_tx_channel_config_t tx_chan_config = {
+		.clk_src = RMT_CLK_SRC_APB, //RMT_CLK_SRC_DEFAULT,   // select source clock
+		.gpio_num = PIN_OE,                    // GPIO number
+		.mem_block_symbols = 64,          // memory block size, 64 * 4 = 256 Bytes
+		.resolution_hz = 80000000, 			// 64 MHz tick resolution, i.e., 1 tick = 1/64 µs
+		.trans_queue_depth = 1,           // set the number of transactions that can pend in the background
+		.flags.invert_out = false,        // do not invert output signal
+		.flags.with_dma = false,          // do not need DMA backend
+	};
+	ESP_ERROR_CHECK(rmt_new_tx_channel(&tx_chan_config, &rmt_tx_chan));
+
+    rmt_copy_encoder_config_t encconf = {};
+    
+    rmt_new_copy_encoder(&encconf,&rmt_encoder);
+    rmt_enable(rmt_tx_chan);
+
+	rmt_symbol.level0 = 0;
+	rmt_symbol.duration0 = 1000;
+	rmt_symbol.level1 = 1;
+	rmt_symbol.duration1 = 1000;
+
+	rmt_transmit(rmt_tx_chan, rmt_encoder, &rmt_symbol, sizeof(rmt_symbol), &rmt_tx_conf);
+	rmt_tx_wait_all_done(rmt_tx_chan,100);	
+}
+
 void app_main(void)
 {
 	for(int i=0;i < 13;i++)
@@ -323,6 +348,7 @@ void app_main(void)
 		gpio_set_direction(pins[i],GPIO_MODE_OUTPUT);
 		gpio_set_level(pins[i],0);
 	}
+	gpio_set_level(PIN_OE,1);
 
 	gptimer_handle_t gptimer = NULL;
 	//timer_init(gptimer);
@@ -341,12 +367,28 @@ void app_main(void)
 	gptimer_new_timer(&timer_config, &gptimer);
 	gptimer_enable(gptimer);
 	
-	ledc_init();
+	//ledc_init();
+
+	rmt_init();
+
+	// while(1)
+	// {
+	// 	rmt_symbol.level0 = 0;
+    //     rmt_symbol.duration0 = 1000;
+    //     rmt_symbol.level1 = 1;
+    //     rmt_symbol.duration1 = 5000;
+
+    //     //printf("%d %d %d %d %d\n",(int)psym->level0,(int)psym->duration0,(int)psym->level1,(int)psym->duration1,(int)psym->val);
+
+    //     //printf("%d  %d\n",payload[0],payload[1]);
+    //     rmt_transmit(rmt_tx_chan, rmt_encoder, &rmt_symbol, 4, &rmt_tx_conf);
+    //     rmt_tx_wait_all_done(rmt_tx_chan,5000);
+	// }
 
 	uint8_t buf[64];
 	while(1){
-		uint64_t rowtime = bb_tx_frame(image,gptimer);		
-		printf("ROWTIME: %lld\n",rowtime);
-		vTaskDelay(100/portTICK_PERIOD_MS);
+		uint64_t rowtime = bb_tx_frame(image,gptimer);
+		//printf("ROWTIME: %lld\n",rowtime);
+		//vTaskDelay(100/portTICK_PERIOD_MS);
 	}
 }

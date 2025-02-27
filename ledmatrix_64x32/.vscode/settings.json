@@ -2,6 +2,10 @@
 	"files.associations": {
 		"random": "c",
 		"ledc.h": "c",
-		"gptimer.h": "c"
+		"gptimer.h": "c",
+		"freertos.h": "c",
+		"rmt_tx.h": "c",
+		"inttypes.h": "c",
+		"stdio.h": "c"
 	}
 }
