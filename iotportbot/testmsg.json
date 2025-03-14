@@ -1,0 +1,76 @@
+[
+	{
+		"update_id": 694905498,
+		"message": {
+				"message_id": 11,
+				"from": {
+						"id": 589993534,
+						"is_bot": false,
+						"first_name": "Sergey",
+						"username": "nothingtowrite",
+						"language_code": "ru",
+						"is_premium": true
+				},
+				"chat": {
+						"id": 589993534,
+						"first_name": "Sergey",
+						"username": "nothingtowrite",
+						"type": "private"
+				},
+				"date": 1741621484,
+				"text": "test2"
+		}
+	},
+	{
+		"update_id": 694905499,
+		"message": {
+				"message_id": 12,
+				"from": {
+						"id": 589993534,
+						"is_bot": false,
+						"first_name": "Sergey",
+						"username": "nothingtowrite",
+						"language_code": "ru",
+						"is_premium": true
+				},
+				"chat": {
+						"id": 589993534,
+						"first_name": "Sergey",
+						"username": "nothingtowrite",
+						"type": "private"
+				},
+				"date": 1741621562,
+				"photo": [
+						{
+								"file_id": "AgACAgIAAxkBAAMMZ88JOvfMmqvG2n5uFy9iFLuScN8AAtHzMRvgMXhK1sxd_DWAUkUBAAMCAANzAAM2BA",
+								"file_unique_id": "AQAD0fMxG-AxeEp4",
+								"file_size": 892,
+								"width": 90,
+								"height": 59
+						},
+						{
+								"file_id": "AgACAgIAAxkBAAMMZ88JOvfMmqvG2n5uFy9iFLuScN8AAtHzMRvgMXhK1sxd_DWAUkUBAAMCAANtAAM2BA",
+								"file_unique_id": "AQAD0fMxG-AxeEpy",
+								"file_size": 8405,
+								"width": 320,
+								"height": 210
+						},
+						{
+								"file_id": "AgACAgIAAxkBAAMMZ88JOvfMmqvG2n5uFy9iFLuScN8AAtHzMRvgMXhK1sxd_DWAUkUBAAMCAAN5AAM2BA",
+								"file_unique_id": "AQAD0fMxG-AxeEp-",
+								"file_size": 30154,
+								"width": 962,
+								"height": 632
+						},
+						{
+								"file_id": "AgACAgIAAxkBAAMMZ88JOvfMmqvG2n5uFy9iFLuScN8AAtHzMRvgMXhK1sxd_DWAUkUBAAMCAAN4AAM2BA",
+								"file_unique_id": "AQAD0fMxG-AxeEp9",
+								"file_size": 30169,
+								"width": 800,
+								"height": 526
+						}
+				],
+				"caption": "frequency детектор"
+		}
+	}
+]

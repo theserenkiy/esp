@@ -1,0 +1,4 @@
+{
+	"cmd": "addvar",
+	"step": 1
+}
