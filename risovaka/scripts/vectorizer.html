@@ -5,9 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vectorizer</title>
 
-<script src="/vectorizer2.js"></script>
 <script>
 const cl = console.log;
+</script>
+
+<script src="/lib.js"></script>
+<script src="/point.js"></script>
+<script src="/cursor.js"></script>
+
+<script>
 
 const W = 320;
 const H = 240;
@@ -58,13 +64,7 @@ function vectorize(im)
 
 }
 
-function createIm()
-{
-	let im = []
-	for(let row=0;row < H;row++)
-		im.push([])
-	return im;
-}
+
 
 function clean(im)
 {
@@ -142,7 +142,7 @@ function findEdges(im)
 		prev = im[r][0];
 		for(let c=0; c < W; c++)
 		{
-			out[r][c] = Math.abs(im[r][c]-prev)
+			out[r][c] = Math.abs(im[r][c]-prev) ? 1 : 0;
 			prev = im[r][c];
 		}
 			
@@ -160,6 +160,18 @@ function findEdges(im)
 	}
 
 	return out
+}
+
+function walkCursor(im)
+{
+	let out = createIm()
+	for(let r=0; r < H; r++)
+	{
+		for(let c=0; c < W; c++)
+		{
+
+		}
+	}
 }
 
 function findPaths(edges)
@@ -221,7 +233,9 @@ window.onload = async () => {
 	await new Promise(s => {
 		im.onload = s;
 		im.src = "/photo.png";
+		//im.src = "/vect.png"40044`;
 		//im.src = "/test1_200.jpg";
+		
 	})
 
 	sctx.drawImage(im,0,0);
@@ -244,12 +258,23 @@ window.onload = async () => {
 	//showIm(sgs)
 	let cleaned = clean(sgs)
 	showIm(cleaned)
-	let edg = findEdges(cleaned)
-	showIm(edg,1,[255,0,0])
 
-	let paths = findPaths(edg)
-	cl(paths)
-	tctx.putImageData(idata_t,0,0);
+	let cur = new Cursor(cleaned,pt(W,H),8)
+	//cur.mkStep(1,10)
+	cur.moveToLine()
+	cur.stabilizeOnLine(10)
+	
+	
+	let im2 = createIm()
+	cur.drawMe(im2)
+	showIm(im2,1,[255,0,0])
+
+	// let edg = findEdges(cleaned)
+	// showIm(edg,1,[255,0,0])
+
+	// let paths = findPaths(edg)
+	// cl(paths)
+	// tctx.putImageData(idata_t,0,0);
 	//showIm(vect,1,[255,255,0])
 
 	//vectorize()
