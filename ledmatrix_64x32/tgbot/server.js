@@ -6,6 +6,9 @@ const cl = console.log;
 import net from 'net';
 import fs from 'fs';
 import fetch from 'node-fetch';
+import botlib from './botlib.js'
+import lib from './lib.js'
+import sharp from 'sharp'
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
 const bot_token = "bot8163000125:AAFkZpGtwKhd_Y4VwyhFHssAnhLP3WA9pR4";
@@ -14,71 +17,7 @@ const proxy = '192.168.88.1:1818';
 let media = [];
 let max_id = 0;
 
-function readMediaDB()
-{
-	media = fs.existsSync('media.db') 
-		? fs.readFileSync('media.db','ascii').split('\n').map(s => JSON.parse(s))
-		: [];
-	
-	for(let d of media)
-		if(d.id > max_id)
-			max_id = d.id;
-}
 
-function appendMediaDB(data)
-{
-	if(data.id > max_id)
-		max_id = data.id;
-	media.push(data)
-	fs.appendFileSync('media.db',JSON.stringify(data))
-}
-
-async function init()
-{
-	readMediaDB()
-}
-
-async function botCall(method,params={})
-{
-	let param_str = Object.entries(params).map(v => v[0]+'='+v[1]).join('&');
-	if(param_str)param_str = '?'+param_str;
-	let res = await fetch('https://api.telegram.org/'+bot_token+'/'+method+param_str, proxy ? {agent: new HttpsProxyAgent('http://'+proxy)} : {});
-	let d = await res.json();
-	if(!d.ok)
-		throw "TG API ok=false @"+method;
-	return d;
-}
-
-async function addPhoto(p)
-{
-	let d = await botCall('getFile',{file_id:p.file_id});
-	cl(d);
-}
-
-async function getBotUpdates()
-{
-	let d = await botCall('getUpdates',{offset:-10});
-	for(let res of d.result)
-	{
-		if(!res.photo && !res.video)
-			continue;
-		let id = res.update_id;
-
-		if(media.find(el => el.id==id))
-			continue;
-		
-		if(d.photo)
-		{
-			for(let item of res.photo)
-				addPhoto(item);
-		}
-	}
-	
-	
-		
-	
-	//cl(JSON.stringify(d,null,' '))
-}
 
 function run_server()
 {
@@ -106,7 +45,7 @@ function run_server()
 						break;
 					
 					case 2:
-						let last_update = getBotUpdate();
+						let last_update = botlib.getUpdateId();
 						break;
 					
 					case 3:
@@ -159,8 +98,28 @@ function run_server()
 
 (async()=>{
 	try{
-		init();
-		await getBotUpdates();
+		while(1)
+		{
+			//init();
+			let photos = await botlib.getUpdates();
+			if(photos)
+			{
+				let p = photos[photos.length-1]
+
+				let path = await botlib.getFile(p.file_id);
+				cl(path);
+				let buf = await sharp(path)
+					.resize({width:64,height:32})
+					.raw()
+					.toBuffer()
+
+				fs.writeFileSync('files/curpict.raw',buf);
+				fs.unlinkSync(path)
+			}
+			
+			await lib.delay(3000)
+		}
+		
 	}catch(e)
 	{
 		cl("ERROR: ",e);
