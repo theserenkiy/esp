@@ -55,7 +55,7 @@ function delay(ms)
 
 function getVarPath(name,user)
 {
-    return user ? 'users/'+user.id+'/vars/'+name+'.txt' : name+'.txt';
+    return user ? 'users/'+user.id+'/vars/'+name+'.json' : 'vars/'+name+'.json';
 }
 
 function getVar(name,user=null)
@@ -63,36 +63,36 @@ function getVar(name,user=null)
     let path = getVarPath(name,user)
     if(!fs.existsSync(path))
         return null;
-    return fs.readFileSync(path,'utf-8');
-}
-
-function getIntVar(name,user=null)
-{
-    let v = +getVar(name,user);
-    if(isNaN(v))v = 0;
-    return v;
-}
-
-function getJSONVar(name,user=null)
-{
-    let v = getVar(name,user);
+    let v = fs.readFileSync(path,'utf-8');
     try{
         return JSON.parse(v);
     }catch(e)
     {
         cl('Error parsing object '+name);
-        return {}
+        return null;
     }
+}
+
+function getIntVar(name,user=null)
+{
+    let v = getVar(name,user);
+    if(v)v = 0;
+    return v;
+}
+
+function getJSONVar(name,user=null)
+{
+    return getVar(name,user);
 }
 
 function setJSONVar(name,obj,user=null)
 {
-    return setVar(name,JSON.stringify(obj,null,"\t"),user);
+    return setVar(name,obj,user);
 }
 
 function setVar(name, value, user=null)
 {
-    fs.writeFileSync(getVarPath(name,user),value+'');
+    fs.writeFileSync(getVarPath(name,user),JSON.stringify(value,null,'  '));
 }
 
 
