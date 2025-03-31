@@ -174,25 +174,30 @@ function walkCursor(im)
 	}
 }
 
+function convertToDots(im)
+{
+	let dots = createIm()
+	iterateIm(edges,(r,c,v) => {
+		dots[r][c] = [v,0,0]
+	})
+	return dots
+}
+
 function findPaths(edges)
 {
 	cl({edges})
-	let dots = createIm()
-	iterateIm(edges,(r,c,v) => {
-		dots[r][c] = [v,0]
-	})
+	let dots = convertToDots(edges)
 
 	cl({dots})
 
 	let paths = []
 
 	iterateIm(dots,(r,c,v) => {
-		//cl(v)
-		if(!v || !v[0] || v[1])return;
-		//v[1] = 1;
+		if(!v || !v[0] || v[1])
+			return;
 		setPixel(r,c,[255,255,0])
 		let path = [[r,c]]
-		mkSubpath(dots,r,c,path)
+		mkPath(dots,r,c,path)
 		paths.push(path)
 		return -1;
 	})
@@ -200,9 +205,11 @@ function findPaths(edges)
 }
 
 let points = [[-1,0],[-1,1],[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1]];
-function mkSubpath(dots,r,c,path)
+function mkPath(dots,r,c,path)
 {
 	cl(r,c)
+
+	
 	for(let p of points)
 	{
 		let P = [r+p[0],c+p[1]]
@@ -232,8 +239,8 @@ window.onload = async () => {
 
 	await new Promise(s => {
 		im.onload = s;
-		im.src = "/photo.png";
-		//im.src = "/vect.png"40044`;
+		//im.src = "/photo.png";
+		im.src = "/vect2.png";
 		//im.src = "/test1_200.jpg";
 		
 	})
@@ -259,27 +266,30 @@ window.onload = async () => {
 	let cleaned = clean(sgs)
 	showIm(cleaned)
 
-	let cur = new Cursor(cleaned,pt(W,H),8)
-	//cur.mkStep(1,10)
-	cur.moveToLine()
-	cur.stabilizeOnLine(10)
+	//MODEL 1
+	// let cur = new Cursor(cleaned,pt(W,H),8)
+	// //cur.mkStep(1,10)
+	// cur.moveToLine()
+	// cur.stabilizeOnLine(10)
 	
 	
-	let im2 = createIm()
-	cur.drawMe(im2)
-	showIm(im2,1,[255,0,0])
+	// let im2 = createIm()
+	// cur.drawMe(im2)
+	// showIm(im2,1,[255,0,0])
 
-	// let edg = findEdges(cleaned)
-	// showIm(edg,1,[255,0,0])
 
+
+	//MODEL 2
+	let edg = findEdges(cleaned)
+	showIm(edg,1,[255,0,0])
+
+	
 	// let paths = findPaths(edg)
 	// cl(paths)
 	// tctx.putImageData(idata_t,0,0);
-	//showIm(vect,1,[255,255,0])
+	// showIm(vect,1,[255,255,0])
 
-	//vectorize()
 
-	
 }
 
 </script>
