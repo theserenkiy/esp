@@ -5,80 +5,22 @@ const cl = console.log;
 
 import net from 'net';
 import fs from 'fs';
+import { exec } from 'child_process';
 import fetch from 'node-fetch';
+import botlib from './botlib.js'
+import lib from './lib.js'
+import sharp from 'sharp'
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
 const bot_token = "bot8163000125:AAFkZpGtwKhd_Y4VwyhFHssAnhLP3WA9pR4";
 const proxy = '192.168.88.1:1818';
 
+let dummy = 0//502255185;
+
 let media = [];
 let max_id = 0;
 
-function readMediaDB()
-{
-	media = fs.existsSync('media.db') 
-		? fs.readFileSync('media.db','ascii').split('\n').map(s => JSON.parse(s))
-		: [];
-	
-	for(let d of media)
-		if(d.id > max_id)
-			max_id = d.id;
-}
 
-function appendMediaDB(data)
-{
-	if(data.id > max_id)
-		max_id = data.id;
-	media.push(data)
-	fs.appendFileSync('media.db',JSON.stringify(data))
-}
-
-async function init()
-{
-	readMediaDB()
-}
-
-async function botCall(method,params={})
-{
-	let param_str = Object.entries(params).map(v => v[0]+'='+v[1]).join('&');
-	if(param_str)param_str = '?'+param_str;
-	let res = await fetch('https://api.telegram.org/'+bot_token+'/'+method+param_str, proxy ? {agent: new HttpsProxyAgent('http://'+proxy)} : {});
-	let d = await res.json();
-	if(!d.ok)
-		throw "TG API ok=false @"+method;
-	return d;
-}
-
-async function addPhoto(p)
-{
-	let d = await botCall('getFile',{file_id:p.file_id});
-	cl(d);
-}
-
-async function getBotUpdates()
-{
-	let d = await botCall('getUpdates',{offset:-10});
-	for(let res of d.result)
-	{
-		if(!res.photo && !res.video)
-			continue;
-		let id = res.update_id;
-
-		if(media.find(el => el.id==id))
-			continue;
-		
-		if(d.photo)
-		{
-			for(let item of res.photo)
-				addPhoto(item);
-		}
-	}
-	
-	
-		
-	
-	//cl(JSON.stringify(d,null,' '))
-}
 
 function run_server()
 {
@@ -106,7 +48,7 @@ function run_server()
 						break;
 					
 					case 2:
-						let last_update = getBotUpdate();
+						let last_update = botlib.getUpdateId();
 						break;
 					
 					case 3:
@@ -157,10 +99,97 @@ function run_server()
 	});
 }
 
+async function savePhoto(d){
+	let buf = await sharp(d.path)
+		.resize({width:64,height:32})
+		.raw()
+		.toBuffer()
+
+	fs.writeFileSync('files/curpict.raw',buf);
+	//fs.unlinkSync(path)
+	lib.setVar('current',d)
+	botlib.send(d.from, `Изображение обработано!`)
+}
+
+async function saveVideo(d) {
+	cl('Save video',d)	
+	let dir = 'files/'+d.fbname
+	fs.rmSync(dir,{recursive:true, force:true})
+	let ffdir = dir+'/ffmpeg'
+	let shdir = dir+'/sharp'
+	fs.mkdirSync(dir);
+	fs.mkdirSync(ffdir);
+	fs.mkdirSync(shdir);
+
+	let cmd = `ffmpeg -i ${d.path} -filter:v scale=128:-1,fps=15 ${ffdir}/frame%04d.png`
+
+	try{
+		await new Promise((s,j) => {
+			exec(cmd,(err,stdout,stderr) => {
+				if(err)j(err);
+				cl({stdout});
+				cl({stderr});
+				s()
+			})
+		})
+		if(!fs.existsSync(ffdir+'/frame0001.png'))
+			throw "No frames exported"
+
+		cl('Converting frames...')
+		let ff = fs.readdirSync(ffdir);
+		d.frames = ff.length;
+
+		for(let f of ff)
+		{
+			cl('sharp',f)
+			let buf = await sharp(ffdir+'/'+f)
+				.resize({width:64, height: 32})
+				.raw()
+				.toBuffer()
+			
+			fs.appendFileSync(shdir+'/common.raw',buf)
+		}
+		fs.copyFileSync(shdir+'/common.raw','files/current.raw')
+		lib.setVar('current',d)
+		if(!dummy)
+			botlib.send(d.from, `Видео обработано! Количество кадров: ${d.frames}`)
+		fs.rmSync(dir,{recursive:true, force:true})
+
+	}catch(e)
+	{
+		cl(e)
+		if(!dummy)
+			botlib.send(d.from, "Произошла ошибка при обработке видео (")
+	}
+}
+
+if(dummy)
+	botlib.dummy_sends = 1;
+
 (async()=>{
 	try{
-		init();
-		await getBotUpdates();
+		while(1)
+		{
+			let upd = await botlib.checkUpdates(dummy);
+			if(upd)
+			{
+				if(upd.is_video && !dummy)
+					botlib.send(upd.from, "Видео обрабатывается...")
+
+				let fdata = await botlib.getFile(upd.file_id);
+				fdata.from = upd.from;
+				fdata.is_video = upd.is_video;
+				if(upd.is_video)
+					await saveVideo(fdata)
+				else
+					await savePhoto(fdata)
+			}
+			
+			if(dummy)
+				break;
+			await lib.delay(3000)
+		}
+		
 	}catch(e)
 	{
 		cl("ERROR: ",e);
