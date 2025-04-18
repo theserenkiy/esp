@@ -76,7 +76,7 @@ function getVar(name,user=null)
 function getIntVar(name,user=null)
 {
     let v = getVar(name,user);
-    if(v)v = 0;
+    if(!v)v = 0;
     return v;
 }
 

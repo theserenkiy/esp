@@ -473,5 +473,71 @@
         }
       ]
     }
+  },
+  {
+    "update_id": 502255188,
+    "message": {
+      "message_id": 31,
+      "from": {
+        "id": 589993534,
+        "is_bot": false,
+        "first_name": "Sergey",
+        "username": "nothingtowrite",
+        "language_code": "en",
+        "is_premium": true
+      },
+      "chat": {
+        "id": 589993534,
+        "first_name": "Sergey",
+        "username": "nothingtowrite",
+        "type": "private"
+      },
+      "date": 1743594977,
+      "video": {
+        "duration": 27,
+        "width": 720,
+        "height": 1280,
+        "mime_type": "video/mp4",
+        "thumbnail": {
+          "file_id": "AAMCAgADGQEAAx9n7SXhtV7lYrpvwmL7Lol1gkZOOAACW2YAAteeCUs3_n5Blut3tgEAB20AAzYE",
+          "file_unique_id": "AQADW2YAAteeCUty",
+          "file_size": 25736,
+          "width": 180,
+          "height": 320
+        },
+        "thumb": {
+          "file_id": "AAMCAgADGQEAAx9n7SXhtV7lYrpvwmL7Lol1gkZOOAACW2YAAteeCUs3_n5Blut3tgEAB20AAzYE",
+          "file_unique_id": "AQADW2YAAteeCUty",
+          "file_size": 25736,
+          "width": 180,
+          "height": 320
+        },
+        "file_id": "BAACAgIAAxkBAAMfZ-0l4bVe5WK6b8Ji-y6JdYJGTjgAAltmAALXnglLN_5-QZbrd7Y2BA",
+        "file_unique_id": "AgADW2YAAteeCUs",
+        "file_size": 11493670
+      }
+    }
+  },
+  {
+    "update_id": 502255189,
+    "message": {
+      "message_id": 34,
+      "from": {
+        "id": 589993534,
+        "is_bot": false,
+        "first_name": "Sergey",
+        "username": "nothingtowrite",
+        "language_code": "en",
+        "is_premium": true
+      },
+      "chat": {
+        "id": 589993534,
+        "first_name": "Sergey",
+        "username": "nothingtowrite",
+        "type": "private"
+      },
+      "date": 1743600476,
+      "text": "Ку"
+    }
   }
 ]

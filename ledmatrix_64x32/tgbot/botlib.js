@@ -13,7 +13,7 @@ let dummy_sends = 0;
 
 let bot_token = lib.getVar('botkey');
 let last_id = lib.getVar('last_id');
-const proxy = null;//'192.168.88.1:1818';
+const proxy = '192.168.88.1:1818';
 
 const binary_server = {
 	ip: '37.46.135.97',
@@ -69,6 +69,7 @@ function getUpdateId()
 
 function getUpdObject(res)
 {
+	cl('getUpdObject',res)
 	let upd = null;
 	if(res.message.photo)
 	{
@@ -86,7 +87,8 @@ function getUpdObject(res)
 			is_video: 1
 		};
 	}
-	upd.from = res.message.from.id;
+	if(upd)
+		upd.from = res.message.from.id;
 	return upd
 }
 

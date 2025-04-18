@@ -1,8 +1,10 @@
 {
-  "path": "files/file_12.jpg",
-  "fname": "file_12.jpg",
-  "fbname": "file_12",
-  "ext": "jpg",
+  "path": "files/file_13.mp4",
+  "fname": "file_13.mp4",
+  "fbname": "file_13",
+  "ext": "mp4",
   "from": 589993534,
-  "is_video": 0
+  "is_video": 1,
+  "frames": 409,
+  "created": 1743595025
 }

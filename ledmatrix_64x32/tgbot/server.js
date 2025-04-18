@@ -12,8 +12,6 @@ import lib from './lib.js'
 import sharp from 'sharp'
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
-const bot_token = "bot8163000125:AAFkZpGtwKhd_Y4VwyhFHssAnhLP3WA9pR4";
-const proxy = '192.168.88.1:1818';
 
 let dummy = 0//502255185;
 
@@ -21,6 +19,10 @@ let media = [];
 let max_id = 0;
 
 
+function bin_send(buf)
+{
+
+}
 
 function run_server()
 {
@@ -35,20 +37,23 @@ function run_server()
 
 		socket.on("data", (data) => {
 			let out = "";
-			let status = 0;
+			let error = 0;
 			console.log(`Received data`, data);
 
 			try{
-				cmd = data.readUInt32LE(16);
+				cmd = data.readUInt32LE(0);
 
 				switch(cmd)
 				{
 					case 1:
-						out = "Server is working!";
+						let fdata = getVar('current');
+						//if(!fdata)
 						break;
 					
 					case 2:
-						let last_update = botlib.getUpdateId();
+						if(!fs.existsSync('current_raw'))
+							break;
+						
 						break;
 					
 					case 3:
@@ -59,11 +64,11 @@ function run_server()
 			catch(e)
 			{
 				cl(e)
-				status = 1;
+				error = 1;
 				out = (e+'').substring(0,16);
 			}
 			let buf = Buffer.alloc(8 + Buffer.byteLength(out));
-			buf.writeInt32LE(status);
+			buf.writeUInt32LE(error);
 			buf.writeUInt32LE(Buffer.byteLength(out),4);
 
 			cl('resp header', buf.subarray(0,8))
@@ -107,7 +112,7 @@ async function savePhoto(d){
 
 	fs.writeFileSync('files/curpict.raw',buf);
 	//fs.unlinkSync(path)
-	lib.setVar('current',d)
+	//lib.setVar('current',d)
 	botlib.send(d.from, `Изображение обработано!`)
 }
 
@@ -150,7 +155,7 @@ async function saveVideo(d) {
 			fs.appendFileSync(shdir+'/common.raw',buf)
 		}
 		fs.copyFileSync(shdir+'/common.raw','files/current.raw')
-		lib.setVar('current',d)
+		
 		if(!dummy)
 			botlib.send(d.from, `Видео обработано! Количество кадров: ${d.frames}`)
 		fs.rmSync(dir,{recursive:true, force:true})
@@ -170,21 +175,29 @@ if(dummy)
 	try{
 		while(1)
 		{
-			let upd = await botlib.checkUpdates(dummy);
-			if(upd)
-			{
-				if(upd.is_video && !dummy)
-					botlib.send(upd.from, "Видео обрабатывается...")
+			try{
+				let upd = await botlib.checkUpdates(dummy);
+				if(upd)
+				{
+					if(upd.is_video && !dummy)
+						botlib.send(upd.from, "Видео обрабатывается...")
 
-				let fdata = await botlib.getFile(upd.file_id);
-				fdata.from = upd.from;
-				fdata.is_video = upd.is_video;
-				if(upd.is_video)
-					await saveVideo(fdata)
-				else
-					await savePhoto(fdata)
+					let fdata = await botlib.getFile(upd.file_id);
+					fdata.from = upd.from;
+					fdata.is_video = upd.is_video;
+					if(upd.is_video)
+						await saveVideo(fdata)
+					else
+						await savePhoto(fdata)
+
+					fdata.created = Math.floor(Date.now()/1000)
+					lib.setVar('current',fdata)
+				}
+			}catch(e)
+			{
+				cl(e)
 			}
-			
+
 			if(dummy)
 				break;
 			await lib.delay(3000)

@@ -4,6 +4,6 @@ function createIm(w,h)
     if(!h)h = H
 	let im = []
 	for(let row=0;row < H;row++)
-		im.push([])
+		im.push(new Array(W))
 	return im;
 }
